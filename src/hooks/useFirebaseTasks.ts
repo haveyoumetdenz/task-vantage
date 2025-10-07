@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '@/integrations/firebase/client'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
+import { createTaskAssignmentNotification, createTaskCompletionNotification } from '@/utils/notifications'
 import { useToast } from '@/hooks/use-toast'
 
 export interface Task {
@@ -63,10 +64,10 @@ export const useFirebaseTasks = (projectId?: string) => {
       return
     }
 
-    // Create query for tasks
+    // Create query for tasks - user's own tasks OR tasks assigned to user
     let q = query(
       collection(db, 'tasks'),
-      where('userId', '==', user.uid),
+      where('assigneeIds', 'array-contains', user.uid),
       orderBy('createdAt', 'desc')
     )
 
@@ -139,6 +140,29 @@ export const useFirebaseTasks = (projectId?: string) => {
       console.log('Final task document to save:', taskDoc)
       const docRef = await addDoc(collection(db, 'tasks'), taskDoc)
       
+      // Send assignment notifications to all assignees (except the creator)
+      const assigneeIds = taskDoc.assigneeIds || []
+      const otherAssignees = assigneeIds.filter(id => id !== user.uid)
+      
+      if (otherAssignees.length > 0) {
+        console.log('🔔 Sending task assignment notifications to:', otherAssignees)
+        try {
+          await Promise.all(
+            otherAssignees.map(assigneeId => 
+              createTaskAssignmentNotification(
+                assigneeId, 
+                taskDoc.title, 
+                docRef.id, 
+                user.email || 'Someone'
+              )
+            )
+          )
+          console.log('✅ Task assignment notifications sent')
+        } catch (error) {
+          console.error('❌ Error sending task assignment notifications:', error)
+        }
+      }
+      
       toast({
         title: 'Success',
         description: 'Task created successfully',
@@ -172,6 +196,64 @@ export const useFirebaseTasks = (projectId?: string) => {
         ...filteredUpdateData,
         updatedAt: new Date().toISOString()
       })
+
+      // Send assignment notifications if assignees are being updated
+      if (updateData.assigneeIds) {
+        const currentTask = tasks.find(t => t.id === id)
+        if (currentTask) {
+          const oldAssignees = currentTask.assigneeIds || []
+          const newAssignees = updateData.assigneeIds
+          const newlyAssigned = newAssignees.filter(id => !oldAssignees.includes(id))
+          
+          if (newlyAssigned.length > 0) {
+            console.log('🔔 Sending task assignment notifications to new assignees:', newlyAssigned)
+            try {
+              await Promise.all(
+                newlyAssigned.map(assigneeId => 
+                  createTaskAssignmentNotification(
+                    assigneeId, 
+                    currentTask.title, 
+                    id, 
+                    user.email || 'Someone'
+                  )
+                )
+              )
+              console.log('✅ Task assignment notifications sent')
+            } catch (error) {
+              console.error('❌ Error sending task assignment notifications:', error)
+            }
+          }
+        }
+      }
+
+      // Send completion notification if task is being completed
+      if (updateData.status === 'completed') {
+        // Get the current task to find assignees
+        const currentTask = tasks.find(t => t.id === id)
+        if (currentTask) {
+          const assigneeIds = currentTask.assigneeIds || []
+          const otherAssignees = assigneeIds.filter(assigneeId => assigneeId !== user.uid)
+          
+          if (otherAssignees.length > 0) {
+            console.log('🔔 Sending task completion notifications to:', otherAssignees)
+            try {
+              await Promise.all(
+                otherAssignees.map(assigneeId => 
+                  createTaskCompletionNotification(
+                    assigneeId, 
+                    currentTask.title, 
+                    id, 
+                    user.email || 'Someone'
+                  )
+                )
+              )
+              console.log('✅ Task completion notifications sent')
+            } catch (error) {
+              console.error('❌ Error sending task completion notifications:', error)
+            }
+          }
+        }
+      }
 
       // If task is being completed and it's recurring, generate next occurrence
       if (updateData.status === 'completed' && updateData.isRecurring) {

@@ -221,15 +221,23 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
                   <div
                     key={task.id}
                     onClick={(e) => handleTaskItemClick(task, e)}
-                    className="p-1 text-xs bg-muted rounded cursor-pointer hover:bg-muted/80 transition-colors"
+                    className={cn(
+                      "p-1 text-xs rounded cursor-pointer hover:bg-muted/80 transition-colors",
+                      task.isProject ? "bg-blue-100 border-l-2 border-blue-500" : "bg-muted"
+                    )}
                   >
-                    <p className="font-medium truncate">{task.title}</p>
+                    <p className="font-medium truncate">
+                      {task.isProject && "📁 "}{task.title}
+                    </p>
                     <div className="flex items-center gap-1 mt-1">
                       <Badge 
-                        variant={task.status === 'completed' ? 'secondary' : 'outline'} 
-                        className="text-xs"
+                        variant={task.status === 'completed' ? 'secondary' : task.isProject ? 'default' : 'outline'} 
+                        className={cn(
+                          "text-xs",
+                          task.isProject && "bg-blue-500 text-white"
+                        )}
                       >
-                        {task.status.replace('_', ' ')}
+                        {task.isProject ? 'Project' : task.status.replace('_', ' ')}
                       </Badge>
                       {task.isRecurring && (
                         <Repeat className="h-3 w-3 text-blue-600" />

@@ -7,11 +7,24 @@ import { useFirebaseTasks, Task } from '@/hooks/useFirebaseTasks'
 import { useFirebaseTeamHierarchyTasks } from '@/hooks/useFirebaseTeamHierarchyTasks'
 import { useFirebaseTeamMembers } from '@/hooks/useFirebaseTeamMembers'
 import { useFirebaseProfile } from '@/hooks/useFirebaseProfile'
+import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Calendar as CalendarIcon, Users, Bell, Repeat } from 'lucide-react'
 import { CreateTaskDialog } from '@/components/forms/CreateTaskDialog'
 import { CreateRecurringTaskDialog } from '@/components/forms/CreateRecurringTaskDialog'
 import { TaskNotifications } from '@/components/calendar/TaskNotifications'
+
+// Function to deduplicate tasks based on task ID
+const deduplicateTasks = (tasks: any[]) => {
+  const seen = new Set()
+  return tasks.filter(task => {
+    if (seen.has(task.id)) {
+      return false
+    }
+    seen.add(task.id)
+    return true
+  })
+}
 
 export default function Calendar() {
   const [showCreateTask, setShowCreateTask] = useState(false)
@@ -23,13 +36,38 @@ export default function Calendar() {
   const { teamTasks, loading: teamTasksLoading } = useFirebaseTeamHierarchyTasks()
   const { teamMembers, loading: teamMembersLoading } = useFirebaseTeamMembers()
   const { profile, isManager } = useFirebaseProfile()
+  const { projects, loading: projectsLoading } = useFirebaseProjects()
 
   console.log('Calendar - tasks:', tasks)
   console.log('Calendar - teamTasks:', teamTasks)
+  console.log('Calendar - projects:', projects)
   console.log('Calendar - tasksLoading:', tasksLoading)
+  console.log('Calendar - projectsLoading:', projectsLoading)
+
+  // Convert projects to calendar events (similar to tasks)
+  const projectEvents = projects
+    .filter(project => project.due_date) // Only projects with due dates
+    .map(project => ({
+      id: `project-${project.id}`,
+      title: project.title,
+      dueDate: project.due_date,
+      type: 'project' as const,
+      status: project.status,
+      priority: 5, // Default priority for projects
+      projectId: project.id,
+      isRecurring: false,
+      assigneeIds: project.assigneeIds || [],
+      description: project.description,
+      // Add project-specific styling
+      isProject: true
+    }))
 
   const handleTaskClick = (task: any) => {
-    navigate(`/tasks/${task.id}`)
+    if (task.isProject) {
+      navigate(`/projects/${task.projectId}`)
+    } else {
+      navigate(`/tasks/${task.id}`)
+    }
   }
 
   const handleTaskUpdate = async (taskData: any) => {
@@ -42,7 +80,7 @@ export default function Calendar() {
     }
   }
 
-  const loading = tasksLoading || teamTasksLoading || teamMembersLoading
+  const loading = tasksLoading || teamTasksLoading || teamMembersLoading || projectsLoading
 
   if (loading) {
     return (
@@ -57,7 +95,7 @@ export default function Calendar() {
     return (
       <div className="p-6 space-y-6">
         {/* Task Notifications */}
-        <TaskNotifications tasks={[...tasks, ...teamTasks]} />
+        <TaskNotifications tasks={deduplicateTasks([...tasks, ...teamTasks, ...projectEvents])} />
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -93,7 +131,7 @@ export default function Calendar() {
           
           <TabsContent value="personal">
             <TaskCalendar 
-              tasks={tasks} 
+              tasks={deduplicateTasks([...tasks, ...projectEvents])} 
               onTaskClick={handleTaskClick}
               onTaskUpdate={handleTaskUpdate}
               onCreateRecurringTasks={handleCreateRecurringTasks}
@@ -113,7 +151,7 @@ export default function Calendar() {
               </label>
             </div>
             <TaskCalendar 
-              tasks={includeMyTasks ? [...teamTasks, ...tasks] : teamTasks} 
+              tasks={includeMyTasks ? deduplicateTasks([...teamTasks, ...tasks, ...projectEvents]) : [...teamTasks, ...projectEvents]} 
               onTaskClick={handleTaskClick}
               onTaskUpdate={handleTaskUpdate}
               onCreateRecurringTasks={handleCreateRecurringTasks}
@@ -134,7 +172,7 @@ export default function Calendar() {
   return (
     <div className="p-6 space-y-6">
       {/* Task Notifications */}
-      <TaskNotifications tasks={tasks} />
+      <TaskNotifications tasks={deduplicateTasks([...tasks, ...projectEvents])} />
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -158,7 +196,7 @@ export default function Calendar() {
 
       {/* Calendar Component */}
       <TaskCalendar 
-        tasks={tasks} 
+        tasks={deduplicateTasks([...tasks, ...projectEvents])} 
         onTaskClick={handleTaskClick}
         onTaskUpdate={handleTaskUpdate}
         onCreateRecurringTasks={handleCreateRecurringTasks}

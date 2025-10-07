@@ -2,6 +2,7 @@ import React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MFASetup } from '@/components/auth/MFASetup'
+import { NotificationPreferences } from '@/components/forms/NotificationPreferences'
 import { User, Shield, Bell, Palette } from 'lucide-react'
 
 const Settings = () => {
@@ -65,17 +66,7 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Choose how you want to be notified about updates
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Notification settings coming soon...</p>
-            </CardContent>
-          </Card>
+          <NotificationPreferences />
         </TabsContent>
 
         <TabsContent value="appearance">

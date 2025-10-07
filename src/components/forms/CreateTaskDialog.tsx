@@ -35,6 +35,8 @@ import { TaskAssigneeSelect } from '@/components/tasks/TaskAssigneeSelect'
 import { PrioritySelector } from '@/components/forms/PrioritySelector'
 import { useFirebaseTasks, CreateTaskData } from '@/hooks/useFirebaseTasks'
 import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
+import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
+import { useAuth } from '@/contexts/FirebaseAuthContext'
 
 const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -43,7 +45,7 @@ const createTaskSchema = z.object({
   priority: z.number().min(1).max(10).default(5),
   due_date: z.date().optional(),
   project_id: z.string().optional(),
-  assignee_ids: z.array(z.string()).optional(),
+  assignee_ids: z.array(z.string()).min(1, 'At least one assignee is required'),
 })
 
 type CreateTaskFormData = z.infer<typeof createTaskSchema>
@@ -58,6 +60,8 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { createTask } = useFirebaseTasks()
   const { projects } = useFirebaseProjects()
+  const { user } = useAuth()
+  const { profile, getTeamManagers, isDirector, isSeniorManagement } = useFirebaseRBAC()
 
   const form = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema),
@@ -71,6 +75,26 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
     },
   })
 
+  // Auto-populate assignees when form opens
+  useEffect(() => {
+    if (open && user?.uid) {
+      let autoAssignees = [user.uid] // Always include creator
+      
+      // Add team managers (but not Directors/Senior Management)
+      if (profile && !isDirector && !isSeniorManagement) {
+        try {
+          const teamManagers = getTeamManagers()
+          autoAssignees = [...autoAssignees, ...teamManagers]
+          console.log('🔧 Pre-populating assignees:', autoAssignees)
+        } catch (error) {
+          console.error('Error getting team managers for pre-population:', error)
+        }
+      }
+      
+      form.setValue('assignee_ids', autoAssignees)
+    }
+  }, [open, user?.uid, profile, isDirector, isSeniorManagement, getTeamManagers, form])
+
   // Reset form when defaultProjectId changes
   useEffect(() => {
     if (defaultProjectId) {
@@ -83,6 +107,36 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
     
     console.log('Form data:', data)
     
+    // Auto-assignment logic
+    let finalAssigneeIds = data.assignee_ids || []
+    
+    // Always add the creator
+    if (user?.uid && !finalAssigneeIds.includes(user.uid)) {
+      finalAssigneeIds.push(user.uid)
+      console.log('🔧 Auto-assigning creator:', user.uid)
+    }
+    
+    // Add team managers (but not Directors/Senior Management)
+    if (profile && !isDirector && !isSeniorManagement) {
+      try {
+        const teamManagers = getTeamManagers()
+        console.log('🔧 Team managers to auto-assign:', teamManagers)
+        
+        teamManagers.forEach(managerId => {
+          if (!finalAssigneeIds.includes(managerId)) {
+            finalAssigneeIds.push(managerId)
+            console.log('🔧 Auto-assigning team manager:', managerId)
+          }
+        })
+      } catch (error) {
+        console.error('Error getting team managers:', error)
+      }
+    } else {
+      console.log('🔧 Skipping manager auto-assignment for Director/Senior Management')
+    }
+    
+    console.log('🔧 Final assignee IDs:', finalAssigneeIds)
+    
     const taskData: CreateTaskData = {
       title: data.title,
       description: data.description,
@@ -90,7 +144,7 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
       priority: data.priority,
       dueDate: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : undefined,
       projectId: data.project_id && data.project_id !== 'no-project' ? data.project_id : undefined,
-      assigneeIds: data.assignee_ids && data.assignee_ids.length > 0 ? data.assignee_ids : undefined,
+      assigneeIds: finalAssigneeIds,
     }
 
     console.log('Task data to create:', taskData)
@@ -237,7 +291,7 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
               name="assignee_ids"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assignees (Optional)</FormLabel>
+                  <FormLabel>Assignees</FormLabel>
                   <FormControl>
                     <TaskAssigneeSelect
                       value={field.value || []}

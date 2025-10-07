@@ -1,115 +1,118 @@
-# Organizational Structure & RBAC System
+# TaskFlow Organizational Structure
 
-## Current User Profile Update
-**User:** denzel.toh.2022@scis.smu.edu.sg  
-**Role:** Senior Management  
-**Team:** Engineering 1  
-**Status:** Active  
+## Updated Hierarchy (Based on User Requirements)
 
-## Role-Based Access Control (RBAC) System
-
-### Available Roles:
-1. **Staff** - Basic user
-2. **Manager** - Team management
-3. **HR** - Human resources
-4. **Director** - Department management
-5. **Senior Management** - Full system access
-
-### Permission Matrix:
-
-| Feature | Staff | Manager | HR | Director | Senior Management |
-|---------|-------|---------|----|---------|-------------------|
-| **View Own Tasks** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **View Team Tasks** | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **View All Tasks** | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Manage Users** | ❌ | ❌ | ✅ | ✅ | ✅ |
-| **Manage Teams** | ❌ | ❌ | ❌ | ✅ | ✅ |
-| **View Reports** | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **Create Projects** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Assign Tasks** | ❌ | ✅ | ✅ | ✅ | ✅ |
-
-## Team Structure
-
-### Engineering 1 Team
-- **Team ID:** engineering-1
-- **Manager:** Denzel Toh (Senior Management)
-- **Members:** 
-  - Denzel Toh (Senior Management) - denzel.toh.2022@scis.smu.edu.sg
-
-### Team Hierarchy
 ```
-Engineering 1
-├── Denzel Toh (Senior Management)
-└── [Other team members will appear here]
+🏢 SENIOR MANAGEMENT (Not in any team - oversees everyone)
+├── Can see all teams and tasks across the organization
+├── Has access to all data and reports
+└── Not assigned to any specific team
+
+📊 ENGINEERING 1 (Director Level)
+├── Highest Role: Director
+├── Can see: Engineering 1 + Engineering 2 (sub-team)
+├── Roles: Staff, Manager, Director
+└── Reports to: Senior Management
+
+📊 ENGINEERING 2 (Manager Level)  
+├── Highest Role: Manager
+├── Can see: Engineering 2 only
+├── Roles: Staff, Manager
+├── Reports to: Engineering 1 Director
+└── Sub-team of: Engineering 1
+
+👥 HR (Director Level)
+├── Highest Role: Director  
+├── Can see: HR team only
+├── Roles: Staff, Manager, Director
+└── Reports to: Senior Management
 ```
 
-## Firebase Collections Structure
+## Role-Based Access Control (RBAC)
 
-### Profiles Collection
-```javascript
-{
-  id: "user-id",
-  userId: "firebase-auth-uid",
-  email: "user@example.com",
-  fullName: "User Name",
-  role: "Senior Management",
-  teamId: "engineering-1",
-  status: "active",
-  mfaEnabled: false,
-  createdAt: "2024-01-01T00:00:00.000Z",
-  updatedAt: "2024-01-01T00:00:00.000Z"
-}
+### **Senior Management**
+- **Team Assignment**: None (not in any specific team)
+- **Visibility**: All teams (Engineering 1, Engineering 2, HR)
+- **Permissions**: Full access to all tasks, projects, and reports
+- **Can Manage**: All users and teams
+
+### **Director (Engineering 1)**
+- **Team Assignment**: Engineering 1
+- **Visibility**: Engineering 1 + Engineering 2 (sub-team)
+- **Permissions**: Manage Engineering 1 and Engineering 2
+- **Can Manage**: Staff and Managers in their teams
+
+### **Director (HR)**
+- **Team Assignment**: HR
+- **Visibility**: HR team only
+- **Permissions**: Manage HR team
+- **Can Manage**: Staff and Managers in HR
+
+### **Manager (Engineering 2)**
+- **Team Assignment**: Engineering 2
+- **Visibility**: Engineering 2 only
+- **Permissions**: Manage Engineering 2 team
+- **Can Manage**: Staff in Engineering 2
+
+### **Manager (Engineering 1)**
+- **Team Assignment**: Engineering 1
+- **Visibility**: Engineering 1 only
+- **Permissions**: Manage Engineering 1 team
+- **Can Manage**: Staff in Engineering 1
+
+### **Manager (HR)**
+- **Team Assignment**: HR
+- **Visibility**: HR team only
+- **Permissions**: Manage HR team
+- **Can Manage**: Staff in HR
+
+### **Staff**
+- **Team Assignment**: Any team (Engineering 1, Engineering 2, or HR)
+- **Visibility**: Own tasks + other staff in same team
+- **Permissions**: View and edit own tasks
+- **Can Manage**: None
+
+## Team Role Limits
+
+| Team | Highest Role | Allowed Roles |
+|------|-------------|---------------|
+| Engineering 1 | Director | Staff, Manager, Director |
+| Engineering 2 | Manager | Staff, Manager |
+| HR | Director | Staff, Manager, Director |
+| Senior Management | Senior Management | Senior Management (separate) |
+
+## Key Features
+
+✅ **Senior Management**: Not in any team, can see everyone  
+✅ **Engineering 2**: Highest role is Manager (reports to Engineering 1)  
+✅ **Engineering 1**: Highest role is Director (can see Engineering 2)  
+✅ **HR**: Highest role is Director (independent team)  
+✅ **Proper Hierarchy**: Clear reporting structure and permissions  
+✅ **Role Validation**: System prevents invalid role assignments to teams  
+
+## Implementation Status
+
+- ✅ RBAC logic updated
+- ✅ Team hierarchy implemented  
+- ✅ Role validation functions added
+- ✅ Team assignment rules defined
+- ✅ Visibility permissions configured
+- ✅ Senior Management properly separated from teams
+- ⚠️ **Action Required**: Update existing Senior Management user profile to remove teamId
+
+## Manual Fix Required
+
+**For the user `denzel.toh.2022@scis.smu.edu.sg` (Senior Management):**
+
+1. **Go to Firebase Console** → Firestore Database
+2. **Find the profiles collection**
+3. **Locate the user with email**: `denzel.toh.2022@scis.smu.edu.sg`
+4. **Update the document** to set `teamId: null`
+5. **Save the changes**
+
+**Alternative - Firebase CLI:**
+```bash
+firebase firestore:update /profiles/{USER_ID} --data '{"teamId": null}'
 ```
 
-### Teams Collection (Future)
-```javascript
-{
-  id: "engineering-1",
-  name: "Engineering 1",
-  description: "Engineering team",
-  managerId: "user-id",
-  parentTeamId: null,
-  status: "active",
-  createdAt: "2024-01-01T00:00:00.000Z",
-  updatedAt: "2024-01-01T00:00:00.000Z"
-}
-```
-
-## Current System Status
-
-### ✅ Working Features:
-- User authentication (Firebase Auth)
-- Task management (CRUD operations)
-- Project management (CRUD operations)
-- Team member viewing
-- Reports and analytics
-- Role-based access control
-
-### 🔧 Team Management Features:
-- View team members by team
-- Update member status (active/deactivated)
-- Update member roles
-- Update member team assignments
-- Real-time team member updates
-
-### 📊 Analytics Features:
-- Task completion rates
-- Project statistics
-- Team productivity metrics
-- Activity trends (30-day history)
-
-## Next Steps for Full Team Management:
-
-1. **Create Teams Collection** - Add teams to Firestore
-2. **Team Hierarchy** - Implement parent-child team relationships
-3. **Team Invitations** - Allow managers to invite new members
-4. **Team Permissions** - Granular permissions within teams
-5. **Team Analytics** - Team-specific performance metrics
-
-## Access Instructions:
-
-1. **To update your profile:** Run the update script in browser console
-2. **To view team page:** Navigate to `/team` (should work with Senior Management role)
-3. **To manage users:** Use the dropdown menus on team member cards
-4. **To view reports:** Navigate to `/reports` for analytics
-
+This will properly separate Senior Management from any team assignment.

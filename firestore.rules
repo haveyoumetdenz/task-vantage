@@ -14,113 +14,48 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Tasks - Role-based access with team hierarchy
+    // Tasks - Simplified for debugging
     match /tasks/{taskId} {
-      allow read: if request.auth != null && (
-        // Staff/HR: Only their own assigned tasks
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['Staff', 'HR'] && 
-         resource.data.assigneeIds != null && 
-         request.auth.uid in resource.data.assigneeIds) ||
-        // Manager: Own assigned tasks + team tasks (same team only)
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Manager' && 
-         (resource.data.assigneeIds != null && request.auth.uid in resource.data.assigneeIds) ||
-         (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.teamId == 
-          get(/databases/$(database)/documents/profiles/$(resource.data.userId)).data.teamId)) ||
-        // Director: Own assigned tasks + team + descendants
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Director' && 
-         (resource.data.assigneeIds != null && request.auth.uid in resource.data.assigneeIds) ||
-         // Can see team and descendant teams (simplified - will be refined in app logic)
-         true) ||
-        // Senior Management: All tasks
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Senior Management'
-      );
-      allow write: if request.auth != null && (
-        // Staff/HR: Only their own assigned tasks
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['Staff', 'HR'] && 
-         resource.data.assigneeIds != null && 
-         request.auth.uid in resource.data.assigneeIds) ||
-        // Manager: Own assigned tasks + team tasks
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Manager' && 
-         (resource.data.assigneeIds != null && request.auth.uid in resource.data.assigneeIds) ||
-         (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.teamId == 
-          get(/databases/$(database)/documents/profiles/$(resource.data.userId)).data.teamId)) ||
-        // Director: Own assigned tasks + team + descendants
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Director' && 
-         (resource.data.assigneeIds != null && request.auth.uid in resource.data.assigneeIds) ||
-         true) ||
-        // Senior Management: All tasks
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Senior Management'
-      );
+      allow read: if request.auth != null; // Any authenticated user can read tasks
+      allow create: if request.auth != null; // Anyone can create tasks
+      allow update, delete: if request.auth != null; // Anyone can modify tasks
     }
     
-    // Projects - Role-based access with team hierarchy
+    // Projects - Simplified for debugging
     match /projects/{projectId} {
-      allow read: if request.auth != null && (
-        // Staff/HR: Only their own projects
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['Staff', 'HR'] && 
-         resource.data.userId == request.auth.uid) ||
-        // Manager: Own projects + team projects
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Manager' && 
-         (resource.data.userId == request.auth.uid ||
-          get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.teamId == 
-          get(/databases/$(database)/documents/profiles/$(resource.data.userId)).data.teamId)) ||
-        // Director: Own projects + team + descendants
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Director' && 
-         (resource.data.userId == request.auth.uid || true)) ||
-        // Senior Management: All projects
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Senior Management'
-      );
-      allow write: if request.auth != null && (
-        // Staff/HR: Only their own projects
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['Staff', 'HR'] && 
-         resource.data.userId == request.auth.uid) ||
-        // Manager: Own projects + team projects
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Manager' && 
-         (resource.data.userId == request.auth.uid ||
-          get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.teamId == 
-          get(/databases/$(database)/documents/profiles/$(resource.data.userId)).data.teamId)) ||
-        // Director: Own projects + team + descendants
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Director' && 
-         (resource.data.userId == request.auth.uid || true)) ||
-        // Senior Management: All projects
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Senior Management'
-      );
+      allow read: if request.auth != null; // Any authenticated user can read projects
+      allow create: if request.auth != null; // Anyone can create projects
+      allow update, delete: if request.auth != null; // Anyone can modify projects
     }
     
-    // Subtasks - Same logic as tasks
+    // Subtasks - Simplified for debugging
     match /subtasks/{subtaskId} {
-      allow read: if request.auth != null && (
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['Staff', 'HR'] && 
-         resource.data.assigneeIds != null && 
-         request.auth.uid in resource.data.assigneeIds) ||
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Manager' && 
-         (resource.data.assigneeIds != null && request.auth.uid in resource.data.assigneeIds) ||
-         (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.teamId == 
-          get(/databases/$(database)/documents/profiles/$(resource.data.userId)).data.teamId)) ||
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Director' && 
-         (resource.data.assigneeIds != null && request.auth.uid in resource.data.assigneeIds) ||
-         true) ||
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Senior Management'
-      );
-      allow write: if request.auth != null && (
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['Staff', 'HR'] && 
-         resource.data.assigneeIds != null && 
-         request.auth.uid in resource.data.assigneeIds) ||
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Manager' && 
-         (resource.data.assigneeIds != null && request.auth.uid in resource.data.assigneeIds) ||
-         (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.teamId == 
-          get(/databases/$(database)/documents/profiles/$(resource.data.userId)).data.teamId)) ||
-        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Director' && 
-         (resource.data.assigneeIds != null && request.auth.uid in resource.data.assigneeIds) ||
-         true) ||
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'Senior Management'
-      );
+      allow read: if request.auth != null; // Any authenticated user can read subtasks
+      allow create: if request.auth != null; // Anyone can create subtasks
+      allow update, delete: if request.auth != null; // Anyone can modify subtasks
     }
     
     // Meetings - Everyone can see company meetings
     match /meetings/{meetingId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
+    }
+    
+    // Activities - Comments and activity logs
+    match /activities/{activityId} {
+      allow read: if request.auth != null; // Any authenticated user can read activities
+      allow create: if request.auth != null; // Any authenticated user can create activities
+      allow update, delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid; // Only the creator can modify
+    }
+    
+    // Notifications - User notifications
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid; // Users can only read their own notifications
+      allow create: if request.auth != null; // Any authenticated user can create notifications
+      allow update, delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid; // Users can only modify their own notifications
     }
   }
 }

@@ -13,6 +13,8 @@ import { useFirebaseTeams } from '@/hooks/useFirebaseTeams'
 import { useToast } from '@/hooks/use-toast'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/integrations/firebase/client'
+import { fetchSignInMethodsForEmail } from 'firebase/auth'
+import { auth } from '@/integrations/firebase/client'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Loader2, CheckCircle, XCircle } from 'lucide-react'
 
@@ -61,7 +63,7 @@ export const SignUpForm = () => {
     },
   })
 
-  // Check if email exists
+  // Check if email exists in both Firestore and Firebase Auth
   const checkEmailExists = async (email: string) => {
     if (!email || !email.includes('@')) {
       setEmailExists(null)
@@ -70,9 +72,25 @@ export const SignUpForm = () => {
 
     setIsCheckingEmail(true)
     try {
-      const q = query(collection(db, 'profiles'), where('email', '==', email))
-      const querySnapshot = await getDocs(q)
-      setEmailExists(!querySnapshot.empty)
+      // Check both Firestore profiles and Firebase Authentication
+      const [profilesQuery, authMethods] = await Promise.all([
+        getDocs(query(collection(db, 'profiles'), where('email', '==', email))),
+        fetchSignInMethodsForEmail(auth, email)
+      ])
+      
+      const existsInProfiles = !profilesQuery.empty
+      const existsInAuth = authMethods.length > 0
+      
+      // Email exists if it's in either Firestore or Firebase Auth
+      const emailExists = existsInProfiles || existsInAuth
+      setEmailExists(emailExists)
+      
+      console.log('Email check results:', {
+        email,
+        existsInProfiles,
+        existsInAuth,
+        emailExists
+      })
     } catch (error) {
       console.error('Error checking email:', error)
       setEmailExists(null)

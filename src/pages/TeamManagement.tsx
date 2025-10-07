@@ -210,37 +210,7 @@ export default function TeamManagement() {
     }
   };
 
-  if (!canManageUsers) {
-    return (
-      <div className="p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Access Restricted</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              You don't have permission to access team management features.
-            </p>
-            <div className="space-y-2">
-              <p><strong>Current Profile:</strong> {profile ? 'Found' : 'Not found'}</p>
-              <p><strong>Role:</strong> {profile?.role || 'No role'}</p>
-              <p><strong>Can Manage Users:</strong> {canManageUsers ? 'Yes' : 'No'}</p>
-            </div>
-            <div className="pt-4">
-              <p className="text-sm text-muted-foreground mb-2">
-                To access team management, you need to be HR, Director, or Senior Management.
-              </p>
-              <p className="text-sm">
-                <a href="/profile-debug" className="text-blue-500 hover:underline">
-                  Go to Profile Debug page to update your role
-                </a>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Access restriction removed - all users can now access team management
 
   if (membersLoading) {
     return (

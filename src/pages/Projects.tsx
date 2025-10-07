@@ -26,7 +26,19 @@ export default function Projects() {
   const [includeMyProjects, setIncludeMyProjects] = useState(false)
   const { projects, loading } = useFirebaseProjects()
   const { tasks: allTasks } = useFirebaseTasks() // Get all tasks
-  const { canViewTeamWork, profile } = useFirebaseRBAC()
+  const { canViewTeamWork, profile, isManager, isDirector, isSeniorManagement, getVisibleTeams } = useFirebaseRBAC()
+  const navigate = useNavigate()
+  
+  // Debug logging
+  console.log('🔍 Projects page - User profile:', profile)
+  console.log('🔍 Projects page - User role:', profile?.role)
+  console.log('🔍 Projects page - User teamId:', profile?.teamId)
+  console.log('🔍 Projects page - canViewTeamWork:', canViewTeamWork)
+  console.log('🔍 Projects page - isManager:', isManager)
+  console.log('🔍 Projects page - isDirector:', isDirector)
+  console.log('🔍 Projects page - isSeniorManagement:', isSeniorManagement)
+  console.log('🔍 Projects page - All projects:', projects)
+  console.log('🔍 Projects page - Loading state:', loading)
   
   // Calculate task counts for each project
   const projectsWithCounts = projects.map(project => {
@@ -38,7 +50,64 @@ export default function Projects() {
       completedTaskCount: completedTasks.length
     }
   })
-  const navigate = useNavigate()
+
+  // Filter projects based on visible teams (for Staff/HR users)
+  const visibleTeams = getVisibleTeams()
+  console.log('🔍 Projects page - Visible teams:', visibleTeams)
+  
+  // If profile is not loaded, don't filter projects yet
+  if (!profile) {
+    console.log('🔍 Profile not loaded - showing no projects until profile loads')
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+            <p className="text-muted-foreground">Loading user profile...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
+  const filteredProjectsByTeam = projectsWithCounts.filter(project => {
+    console.log('🔍 Filtering project:', {
+      id: project.id,
+      title: project.title,
+      teamId: project.teamId,
+      userId: project.userId,
+      visibleTeams: visibleTeams,
+      isSeniorManagement,
+      isManager,
+      isDirector
+    })
+    
+    // If user can view all teams (Senior Management, Director), show all projects
+    if (isSeniorManagement || isDirector) {
+      console.log('🔍 User can view all teams - showing project', {
+        isSeniorManagement,
+        isManager,
+        isDirector,
+        userRole: profile?.role
+      })
+      return true
+    }
+    
+    // For Staff/HR/Manager users, only show projects from their visible teams
+    // If user profile is not loaded, don't show any projects
+    if (!profile) {
+      console.log('🔍 User profile not loaded - hiding project:', project.title)
+      return false
+    }
+    
+    // For Staff/HR/Manager users, only show projects from their visible teams
+    // Projects must have a teamId and that teamId must be in the user's visible teams
+    const shouldShow = project.teamId && visibleTeams.includes(project.teamId)
+    console.log('🔍 Should show project:', shouldShow, 'because teamId:', project.teamId, 'is in visibleTeams:', visibleTeams, 'project title:', project.title)
+    return shouldShow
+  })
+  
+  console.log('🔍 Projects page - Filtered projects by team:', filteredProjectsByTeam)
 
   const handleAddTask = (projectId: string) => {
     setSelectedProjectId(projectId)
@@ -50,31 +119,47 @@ export default function Projects() {
     setOpenEdit(true)
   }
 
-  // Role-based project filtering
+  // Role-based project filtering (aligned with task logic)
   const getProjectsForCurrentView = () => {
+    console.log('🔍 Projects page - getProjectsForCurrentView called')
+    console.log('🔍 Active tab:', activeTab)
+    console.log('🔍 Include my projects:', includeMyProjects)
+    console.log('🔍 All projects:', projectsWithCounts)
+    console.log('🔍 Filtered projects by team:', filteredProjectsByTeam)
+    console.log('🔍 Profile:', profile)
+    
     if (activeTab === 'my') {
-      // My projects: created by user or user is member
-      return projectsWithCounts.filter(project => 
+      // My projects: created by user OR user is assigned to project
+      const myProjects = filteredProjectsByTeam.filter(project => 
         project.userId === profile?.userId || 
-        (project.memberIds && project.memberIds.includes(profile?.userId || ''))
+        (project.assigneeIds && project.assigneeIds.includes(profile?.userId || '')) ||
+        (project.assignee_ids && project.assignee_ids.includes(profile?.userId || ''))
       )
+      console.log('🔍 My projects (created by me OR assigned to me):', myProjects)
+      return myProjects
     } else if (activeTab === 'team') {
-      // Team projects: projects created by team members (excluding own)
-      const myProjects = projectsWithCounts.filter(project => 
-        project.userId === profile?.userId || 
-        (project.memberIds && project.memberIds.includes(profile?.userId || ''))
-      )
+      // Team projects: projects created by team members
+      console.log('🔍 Team projects logic - canViewTeamWork:', canViewTeamWork)
       
-      if (includeMyProjects) {
-        return projectsWithCounts
+      if (!canViewTeamWork) {
+        console.log('🔍 User cannot view team work, returning empty array')
+        return []
       }
       
-      return projectsWithCounts.filter(project => 
-        project.userId !== profile?.userId && 
-        (!project.memberIds || !project.memberIds.includes(profile?.userId || ''))
+      if (includeMyProjects) {
+        console.log('🔍 Team projects (including my own):', filteredProjectsByTeam)
+        return filteredProjectsByTeam
+      }
+      
+      // Team projects: exclude my own projects (created by me)
+      const teamProjects = filteredProjectsByTeam.filter(project => 
+        project.userId !== profile?.userId
       )
+      console.log('🔍 Team projects (excluding my own):', teamProjects)
+      console.log('🔍 Team projects details:', teamProjects.map(p => ({ id: p.id, title: p.title, userId: p.userId, assigneeIds: p.assigneeIds, teamId: p.teamId })))
+      return teamProjects
     }
-    return projectsWithCounts
+    return filteredProjectsByTeam
   }
 
   const filtered = getProjectsForCurrentView().filter(p =>

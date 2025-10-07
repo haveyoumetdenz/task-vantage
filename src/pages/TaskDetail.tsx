@@ -31,6 +31,9 @@ import { SubtaskList } from '@/components/tasks/SubtaskList'
 import { ActivityLog } from '@/components/tasks/ActivityLog'
 import { EditRecurringTaskDialog } from '@/components/forms/EditRecurringTaskDialog'
 import { useFirebaseTasks, Task } from '@/hooks/useFirebaseTasks'
+import { useFirebaseTeamHierarchyTasks } from '@/hooks/useFirebaseTeamHierarchyTasks'
+import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
+import { useFirebaseUserProfiles } from '@/hooks/useFirebaseUserProfiles'
 import { cn } from '@/lib/utils'
 import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
 import { format } from 'date-fns'
@@ -53,15 +56,32 @@ export default function TaskDetail() {
   const { taskId } = useParams<{ taskId: string }>()
   const navigate = useNavigate()
   const { tasks, updateTask } = useFirebaseTasks()
+  const { teamTasks } = useFirebaseTeamHierarchyTasks()
   const { projects } = useFirebaseProjects()
+  const { canEditTask, profile } = useFirebaseRBAC()
   
   const [task, setTask] = useState<Task | null>(null)
+  
+  // Fetch assignee profiles - only when task is available
+  const { profiles: assigneeProfiles, loading: profilesLoading } = useFirebaseUserProfiles(
+    task ? (task.assigneeIds || []) : []
+  )
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState<any>({})
   const [showRecurringEditDialog, setShowRecurringEditDialog] = useState(false)
   
+  // Check if user can edit this task
+  const userCanEdit = task ? canEditTask(task.userId, profile?.teamId) : false
+  
   useEffect(() => {
-    const foundTask = tasks.find(t => t.id === taskId)
+    // First try to find in regular tasks
+    let foundTask = tasks.find(t => t.id === taskId)
+    
+    // If not found, try to find in team tasks
+    if (!foundTask) {
+      foundTask = teamTasks.find(t => t.id === taskId)
+    }
+    
     if (foundTask) {
       setTask(foundTask)
       setEditData({
@@ -69,12 +89,12 @@ export default function TaskDetail() {
         description: foundTask.description,
         status: foundTask.status,
         priority: foundTask.priority,
-        due_date: foundTask.due_date,
+        due_date: foundTask.dueDate,
         project_id: foundTask.project_id || 'no-project',
-        assignee_ids: foundTask.assignees?.map(a => a.user_id) || []
+        assignee_ids: foundTask.assigneeIds || []
       })
     }
-  }, [tasks, taskId])
+  }, [tasks, teamTasks, taskId])
 
   if (!task) {
     return (
@@ -98,8 +118,15 @@ export default function TaskDetail() {
       // Format due_date properly before sending to updateTask
       const formattedEditData = {
         ...editData,
-        project_id: editData.project_id === 'no-project' ? null : editData.project_id
+        dueDate: editData.due_date, // Convert snake_case to camelCase
+        projectId: editData.project_id === 'no-project' ? null : editData.project_id,
+        assigneeIds: editData.assignee_ids
       }
+      
+      // Remove the old snake_case fields
+      delete formattedEditData.due_date
+      delete formattedEditData.project_id
+      delete formattedEditData.assignee_ids
 
       console.log('About to call updateTask with formatted data:', formattedEditData)
       const result = await updateTask({
@@ -162,7 +189,7 @@ export default function TaskDetail() {
                 Save Changes
               </Button>
             </>
-          ) : (
+          ) : userCanEdit ? (
             <Button variant="outline" onClick={() => {
               if (task?.isRecurring) {
                 console.log('Opening recurring task edit dialog for task:', task.title)
@@ -175,6 +202,11 @@ export default function TaskDetail() {
               <Edit3 className="h-4 w-4 mr-2" />
               {task?.isRecurring ? 'Edit Recurring Task' : 'Edit Task'}
             </Button>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Edit3 className="h-4 w-4" />
+              <span>Read Only</span>
+            </div>
           )}
         </div>
       </div>
@@ -191,6 +223,11 @@ export default function TaskDetail() {
                   <Badge className={statusData?.color}>
                     {statusData?.label}
                   </Badge>
+                  {!userCanEdit && (
+                    <Badge variant="outline" className="text-xs">
+                      Read Only
+                    </Badge>
+                  )}
                   <Flag className={`h-4 w-4 ${priorityData?.color}`} />
                 </div>
               </CardTitle>
@@ -203,6 +240,7 @@ export default function TaskDetail() {
                     value={editData.title}
                     onChange={(e) => setEditData({ ...editData, title: e.target.value })}
                     className="mt-1"
+                    disabled={!userCanEdit}
                   />
                 ) : (
                   <p className="mt-1">{task.title}</p>
@@ -307,13 +345,16 @@ export default function TaskDetail() {
                   />
                 ) : (
                   <div className="mt-1">
-                    {task.assignees && task.assignees.length > 0 ? (
+                    {task.assigneeIds && task.assigneeIds.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {task.assignees.map((assignee) => (
-                          <Badge key={assignee.user_id} variant="secondary">
-                            {assignee.profile?.full_name || 'Unknown User'}
-                          </Badge>
-                        ))}
+                        {task.assigneeIds.map((assigneeId) => {
+                          const assigneeProfile = assigneeProfiles.find(p => p.userId === assigneeId)
+                          return (
+                            <Badge key={assigneeId} variant="secondary">
+                              {assigneeProfile ? assigneeProfile.fullName : assigneeId}
+                            </Badge>
+                          )
+                        })}
                       </div>
                     ) : (
                       <p className="text-muted-foreground">No assignees</p>
@@ -400,7 +441,7 @@ export default function TaskDetail() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Assignees</span>
-                <span className="font-medium">{task.assignees?.length || 0}</span>
+                <span className="font-medium">{task.assigneeIds?.length || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Created</span>

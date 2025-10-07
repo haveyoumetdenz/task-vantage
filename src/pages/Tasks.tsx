@@ -13,10 +13,11 @@ import { EditRecurringTaskDialog } from '@/components/forms/EditRecurringTaskDia
 import { useFirebaseTasks, Task } from '@/hooks/useFirebaseTasks'
 import { useFirebaseTeamHierarchyTasks } from '@/hooks/useFirebaseTeamHierarchyTasks'
 import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
+import { useFirebaseUserProfiles } from '@/hooks/useFirebaseUserProfiles'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { useFirebaseProfile } from '@/hooks/useFirebaseProfile'
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { 
   Plus, 
   Filter, 
@@ -52,11 +53,12 @@ const getPriorityConfig = (priority: number) => {
   return { label: `Priority ${priority}`, color: "text-green-600" }
 }
 
-function TaskCard({ task, onClick, onEdit, onDelete }: { 
+function TaskCard({ task, onClick, onEdit, onDelete, assigneeProfiles }: { 
   task: Task; 
   onClick?: () => void;
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
+  assigneeProfiles?: any[];
 }) {
   const navigate = useNavigate()
   const StatusIcon = statusConfig[task.status as keyof typeof statusConfig]?.icon || Clock
@@ -131,13 +133,16 @@ function TaskCard({ task, onClick, onEdit, onDelete }: {
         {task.assigneeIds && task.assigneeIds.length > 0 && (
           <div className="flex items-center gap-2">
             <div className="flex -space-x-2">
-              {task.assigneeIds.slice(0, 3).map((assigneeId, index) => (
-                <Avatar key={assigneeId} className="h-6 w-6 border-2 border-background">
-                  <AvatarFallback className="text-xs">
-                    {assigneeId.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
+              {task.assigneeIds.slice(0, 3).map((assigneeId, index) => {
+                const assigneeProfile = assigneeProfiles?.find(p => p.userId === assigneeId)
+                return (
+                  <Avatar key={assigneeId} className="h-6 w-6 border-2 border-background">
+                    <AvatarFallback className="text-xs">
+                      {assigneeProfile ? assigneeProfile.fullName.charAt(0).toUpperCase() : assigneeId.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                )
+              })}
               {task.assigneeIds.length > 3 && (
                 <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
                   <span className="text-xs font-medium">+{task.assigneeIds.length - 3}</span>
@@ -162,12 +167,13 @@ function TaskCard({ task, onClick, onEdit, onDelete }: {
   )
 }
 
-function KanbanColumn({ status, tasks, onTaskClick, onEditTask, onDeleteTask }: { 
+function KanbanColumn({ status, tasks, onTaskClick, onEditTask, onDeleteTask, assigneeProfiles }: { 
   status: string; 
   tasks: Task[];
   onTaskClick: (taskId: string) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
+  assigneeProfiles?: any[];
 }) {
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -201,6 +207,7 @@ function KanbanColumn({ status, tasks, onTaskClick, onEditTask, onDeleteTask }: 
             onClick={() => onTaskClick(task.id)}
             onEdit={onEditTask}
             onDelete={onDeleteTask}
+            assigneeProfiles={assigneeProfiles}
           />
         ))}
       </div>
@@ -209,11 +216,14 @@ function KanbanColumn({ status, tasks, onTaskClick, onEditTask, onDeleteTask }: 
 }
 
 export default function Tasks() {
-  const { tasks, loading, updateTask, deleteTask, migrateTasksMissingIsRecurring } = useFirebaseTasks()
+  // ALL HOOKS MUST BE CALLED FIRST - NO CONDITIONAL RETURNS BEFORE ALL HOOKS
+  const { tasks, loading, updateTask, deleteTask } = useFirebaseTasks()
   const { teamTasks, loading: hierarchyLoading } = useFirebaseTeamHierarchyTasks()
-  const { canViewTeamWork } = useFirebaseRBAC()
-  const { profile } = useFirebaseProfile()
+  const { canViewTeamWork, profile, getVisibleTeams } = useFirebaseRBAC()
+  const { user } = useAuth()
   const navigate = useNavigate()
+  
+  // All state hooks
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -226,14 +236,11 @@ export default function Tasks() {
   const [activeTab, setActiveTab] = useState('my')
   const [includeMyTasks, setIncludeMyTasks] = useState(false)
 
-  if (loading || hierarchyLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
+  // Debug: Log teamTasks whenever they change
+  console.log('🔍 Tasks.tsx - teamTasks:', teamTasks)
+  console.log('🔍 Tasks.tsx - teamTasks length:', teamTasks.length)
 
+  // ALL useMemo hooks must be called before any conditional logic
   const getFilteredTasks = (taskList: Task[]) => {
     return taskList.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -252,7 +259,12 @@ export default function Tasks() {
   }
 
   const getTasksForCurrentView = () => {
+    console.log('🔍 getTasksForCurrentView - activeTab:', activeTab, 'includeMyTasks:', includeMyTasks)
+    console.log('🔍 getTasksForCurrentView - teamTasks:', teamTasks)
+    console.log('🔍 getTasksForCurrentView - tasks:', tasks)
+    
     if (activeTab === 'my') {
+      console.log('🔍 Returning my tasks:', tasks)
       return tasks
     } else {
       // Convert TeamHierarchyTask to Task format for consistency
@@ -260,7 +272,21 @@ export default function Tasks() {
         ...task,
         priority: typeof task.priority === 'string' ? parseInt(task.priority) || 5 : task.priority
       })) as Task[]
-      return includeMyTasks ? [...convertedTeamTasks, ...tasks] : convertedTeamTasks
+      console.log('🔍 Converted team tasks:', convertedTeamTasks)
+      
+      if (includeMyTasks) {
+        // If including my tasks, we need to avoid duplicates
+        // Filter out tasks that are already in teamTasks
+        const myTasksNotInTeam = tasks.filter(myTask => 
+          !convertedTeamTasks.some(teamTask => teamTask.id === myTask.id)
+        )
+        const result = [...convertedTeamTasks, ...myTasksNotInTeam]
+        console.log('🔍 Final result for team view (with my tasks):', result)
+        return result
+      } else {
+        console.log('🔍 Final result for team view (team only):', convertedTeamTasks)
+        return convertedTeamTasks
+      }
     }
   }
 
@@ -276,8 +302,32 @@ export default function Tasks() {
     return { totalTasks, completedTasks, inProgressTasks, overdueTasks }
   }
 
-  const currentTasks = getTasksForCurrentView()
+  // Memoize the current tasks to prevent hooks violation
+  const currentTasks = useMemo(() => {
+    return getTasksForCurrentView()
+  }, [activeTab, includeMyTasks, tasks, teamTasks])
+  
   const { totalTasks, completedTasks, inProgressTasks, overdueTasks } = getQuickStats(getFilteredTasks(currentTasks))
+  
+  // Get all unique assignee IDs from current tasks (memoized to prevent hooks violation)
+  const allAssigneeIds = useMemo(() => {
+    const ids = Array.from(new Set(
+      currentTasks.flatMap(task => task.assigneeIds || [])
+    ))
+    return ids.length > 0 ? ids : []
+  }, [currentTasks])
+  
+  // Fetch profiles for all assignees - with stable dependencies
+  const { profiles: assigneeProfiles } = useFirebaseUserProfiles(allAssigneeIds)
+
+  // Handle loading state AFTER all hooks are called
+  if (loading || hierarchyLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
 
   const renderTaskContent = (taskList: Task[]) => {
     return (
@@ -334,6 +384,7 @@ export default function Tasks() {
                     }
                   }}
                   onDelete={() => deleteTask(task.id)}
+                  assigneeProfiles={assigneeProfiles}
                 />
               ))
             )}
@@ -358,6 +409,7 @@ export default function Tasks() {
                   }
                 }}
                 onDeleteTask={deleteTask}
+                assigneeProfiles={assigneeProfiles}
               />
             ))}
           </div>
@@ -383,13 +435,6 @@ export default function Tasks() {
           <Button variant="outline" onClick={() => setCreateRecurringDialogOpen(true)}>
             <Repeat className="h-4 w-4 mr-2" />
             Recurring Task
-          </Button>
-          <Button 
-            variant="secondary" 
-            onClick={migrateTasksMissingIsRecurring}
-            className="text-xs"
-          >
-            Fix Data
           </Button>
         </div>
       </div>

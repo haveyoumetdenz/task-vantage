@@ -3,6 +3,7 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, o
 import { db } from '@/integrations/firebase/client'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
 
 export interface Project {
   id: string
@@ -37,6 +38,7 @@ export const useFirebaseProjects = () => {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
   const { toast } = useToast()
+  const { profile, isManager, isDirector, isSeniorManagement, canViewTeamWork, getVisibleTeams } = useFirebaseRBAC()
 
   useEffect(() => {
     if (!user) {
@@ -45,25 +47,62 @@ export const useFirebaseProjects = () => {
       return
     }
 
-    // Create query for projects
-    const q = query(
-      collection(db, 'projects'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    )
+    console.log('🔍 useFirebaseProjects - User role:', profile?.role)
+    console.log('🔍 useFirebaseProjects - Is Manager:', isManager)
+    console.log('🔍 useFirebaseProjects - Is Director:', isDirector)
+    console.log('🔍 useFirebaseProjects - Is Senior Management:', isSeniorManagement)
+
+    // Create query based on user role
+    let q
+    if (isSeniorManagement || isDirector) {
+      // Directors and Senior Management can see all projects
+      q = query(
+        collection(db, 'projects'),
+        orderBy('createdAt', 'desc')
+      )
+      console.log('🔍 useFirebaseProjects - Querying ALL projects (Director/Senior Management)')
+    } else if (canViewTeamWork) {
+      // Staff/HR/Manager who can view team work can see projects from their visible teams
+      // For now, we'll fetch all projects and filter in the UI based on visible teams
+      q = query(
+        collection(db, 'projects'),
+        orderBy('createdAt', 'desc')
+      )
+      console.log('🔍 useFirebaseProjects - Querying ALL projects (Staff/HR/Manager with team work access)')
+      console.log('🔍 useFirebaseProjects - Visible teams:', getVisibleTeams())
+    } else {
+      // Staff/HR who cannot view team work can only see projects they're assigned to
+      q = query(
+        collection(db, 'projects'),
+        where('assigneeIds', 'array-contains', user.uid),
+        orderBy('createdAt', 'desc')
+      )
+      console.log('🔍 useFirebaseProjects - Querying assigned projects only (Staff/HR without team work access)')
+    }
+
+    console.log('🔍 useFirebaseProjects - Querying projects for user:', user.uid)
 
     // Set up real-time listener
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const projectsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Project[]
+      console.log('🔍 useFirebaseProjects - Raw projects from Firebase:', snapshot.docs.length, 'projects')
+      const projectsData = snapshot.docs.map(doc => {
+        const data = doc.data()
+        console.log('🔍 Project data:', doc.id, data)
+        return {
+          id: doc.id,
+          ...data
+        }
+      }) as Project[]
+      console.log('🔍 useFirebaseProjects - Processed projects:', projectsData)
       setProjects(projectsData)
+      setLoading(false)
+    }, (error) => {
+      console.error('🔍 useFirebaseProjects - Error fetching projects:', error)
       setLoading(false)
     })
 
     return () => unsubscribe()
-  }, [user])
+  }, [user, profile, isManager, isDirector, isSeniorManagement, canViewTeamWork])
 
   const createProject = async (projectData: CreateProjectData) => {
     if (!user) return null
