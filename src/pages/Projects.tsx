@@ -14,6 +14,7 @@ import { EditProjectDialog } from "@/components/forms/EditProjectDialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { useNavigate } from "react-router-dom"
+import { testProjectAssignmentNotification } from '@/utils/testProjectNotifications'
 
 export default function Projects() {
   const [search, setSearch] = useState("")
@@ -119,6 +120,20 @@ export default function Projects() {
     setOpenEdit(true)
   }
 
+  const handleTestProjectNotification = async () => {
+    if (!profile?.userId) {
+      console.error('No user ID found')
+      return
+    }
+    
+    try {
+      await testProjectAssignmentNotification(profile.userId)
+      console.log('✅ Test project notification sent')
+    } catch (error) {
+      console.error('❌ Error sending test project notification:', error)
+    }
+  }
+
   // Role-based project filtering (aligned with task logic)
   const getProjectsForCurrentView = () => {
     console.log('🔍 Projects page - getProjectsForCurrentView called')
@@ -186,10 +201,15 @@ export default function Projects() {
           <h1 className="text-3xl font-bold">Projects</h1>
           <p className="text-muted-foreground">Organize and track your project progress.</p>
         </div>
-        <Button className="bg-gradient-primary hover:opacity-90 shadow-glow" onClick={() => setOpenCreate(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleTestProjectNotification}>
+            Test Project Notification
+          </Button>
+          <Button className="bg-gradient-primary hover:opacity-90 shadow-glow" onClick={() => setOpenCreate(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
