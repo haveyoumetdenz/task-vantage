@@ -128,8 +128,9 @@ export const CreateProjectDialog = ({ open, onOpenChange }: CreateProjectDialogP
       description: data.description,
       status: data.status,
       progress: data.progress,
-      due_date: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : undefined,
-      assignee_ids: finalAssigneeIds,
+      dueDate: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : undefined,
+      teamId: profile?.teamId, // Add the user's team ID
+      assigneeIds: finalAssigneeIds,
     }
 
     const result = await createProject(projectData)
