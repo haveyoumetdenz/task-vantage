@@ -130,6 +130,14 @@ export const useFirebaseProjects = () => {
       const assigneeIds = projectDoc.assigneeIds || []
       const otherAssignees = assigneeIds.filter(id => id !== user.uid)
       
+      console.log('🔔 Project assignment debug:', {
+        allAssignees: assigneeIds,
+        creatorId: user.uid,
+        otherAssignees: otherAssignees,
+        projectTitle: projectData.title,
+        projectId: docRef.id
+      })
+      
       if (otherAssignees.length > 0) {
         console.log('🔔 Sending project assignment notifications to:', otherAssignees)
         try {
@@ -147,6 +155,8 @@ export const useFirebaseProjects = () => {
         } catch (error) {
           console.error('❌ Error sending project assignment notifications:', error)
         }
+      } else {
+        console.log('🔔 No other assignees found - no project assignment notifications to send')
       }
       
       toast({
