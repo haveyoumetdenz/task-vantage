@@ -4,6 +4,7 @@ import { db } from '@/integrations/firebase/client'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
+import { createProjectAssignmentNotification } from '@/utils/notifications'
 
 export interface Project {
   id: string
@@ -125,6 +126,29 @@ export const useFirebaseProjects = () => {
 
       const docRef = await addDoc(collection(db, 'projects'), projectDoc)
       
+      // Send assignment notifications to all assignees (except the creator)
+      const assigneeIds = projectDoc.assigneeIds || []
+      const otherAssignees = assigneeIds.filter(id => id !== user.uid)
+      
+      if (otherAssignees.length > 0) {
+        console.log('🔔 Sending project assignment notifications to:', otherAssignees)
+        try {
+          await Promise.all(
+            otherAssignees.map(assigneeId => 
+              createProjectAssignmentNotification(
+                assigneeId, 
+                projectData.title, 
+                docRef.id, 
+                user.email || 'Someone'
+              )
+            )
+          )
+          console.log('✅ Project assignment notifications sent')
+        } catch (error) {
+          console.error('❌ Error sending project assignment notifications:', error)
+        }
+      }
+      
       toast({
         title: 'Success',
         description: 'Project created successfully',
@@ -153,6 +177,36 @@ export const useFirebaseProjects = () => {
       const filteredUpdateData = Object.fromEntries(
         Object.entries(updateData).filter(([_, value]) => value !== undefined)
       )
+      
+      // Check if assignees are being updated and send notifications
+      if (updateData.assigneeIds) {
+        // Get current project data to compare assignees
+        const currentProject = projects.find(p => p.id === id)
+        if (currentProject) {
+          const currentAssignees = currentProject.assigneeIds || []
+          const newAssignees = updateData.assigneeIds
+          const newlyAssigned = newAssignees.filter(id => !currentAssignees.includes(id))
+          
+          if (newlyAssigned.length > 0) {
+            console.log('🔔 Sending project assignment notifications to newly assigned users:', newlyAssigned)
+            try {
+              await Promise.all(
+                newlyAssigned.map(assigneeId => 
+                  createProjectAssignmentNotification(
+                    assigneeId, 
+                    currentProject.title, 
+                    id, 
+                    user.email || 'Someone'
+                  )
+                )
+              )
+              console.log('✅ Project assignment notifications sent for updates')
+            } catch (error) {
+              console.error('❌ Error sending project assignment notifications for updates:', error)
+            }
+          }
+        }
+      }
       
       await updateDoc(projectRef, {
         ...filteredUpdateData,
