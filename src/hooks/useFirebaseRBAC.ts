@@ -296,15 +296,17 @@ export const useFirebaseRBAC = () => {
     canEditTask,
     // Team management
     getTeamManagers: () => {
-      if (!profile?.teamId) return []
+      if (!profile?.teamId) {
+        console.log('🔧 getTeamManagers - No teamId found')
+        return []
+      }
       
-      // For now, return empty array - this would need to query the database
-      // to find all users with role 'Manager' in the same team
       console.log('🔧 getTeamManagers - teamId:', profile.teamId)
       console.log('🔧 getTeamManagers - This would query database for managers in team')
       
       // TODO: Implement database query to get team managers
       // This would query profiles where role='Manager' AND teamId=profile.teamId
+      // For now, return empty array to avoid breaking the system
       return []
     }
   }
