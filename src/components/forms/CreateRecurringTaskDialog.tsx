@@ -42,16 +42,19 @@ const createRecurringTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(['todo', 'in_progress', 'completed', 'cancelled']).default('todo'),
   priority: z.number().min(1).max(10).default(5),
-  due_date: z.date({
-    required_error: 'Due date is required for recurring tasks',
+  start_date: z.date({
+    required_error: 'Start date is required for recurring tasks',
   }),
-  due_time: z.string().min(1, 'Due time is required'),
+  start_time: z.string().min(1, 'Start time is required'),
+  end_date: z.date({
+    required_error: 'End date is required for recurring tasks',
+  }),
+  end_time: z.string().min(1, 'End time is required'),
   project_id: z.string().optional(),
   assignee_ids: z.array(z.string()).optional(),
   recurrence: z.object({
     frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
     interval: z.number().min(1).default(1),
-    end_date: z.date().optional(),
     max_occurrences: z.number().min(1).optional(),
   }),
 })
@@ -80,14 +83,15 @@ export const CreateRecurringTaskDialog = ({
       description: '',
       status: 'todo',
       priority: 5,
-      due_date: undefined,
-      due_time: '09:00',
+      start_date: undefined,
+      start_time: '09:00',
+      end_date: undefined,
+      end_time: '17:00',
       project_id: 'no-project',
       assignee_ids: [],
       recurrence: {
         frequency: 'daily',
         interval: 1,
-        end_date: undefined,
         max_occurrences: undefined,
       },
     },
@@ -105,24 +109,29 @@ export const CreateRecurringTaskDialog = ({
     
     console.log('Recurring task form data:', data)
     
-    // Combine date and time
-    const dueDateTime = new Date(data.due_date)
-    const [hours, minutes] = data.due_time.split(':').map(Number)
-    dueDateTime.setHours(hours, minutes, 0, 0)
+    // Combine start date and time for the first occurrence
+    const startDateTime = new Date(data.start_date)
+    const [startHours, startMinutes] = data.start_time.split(':').map(Number)
+    startDateTime.setHours(startHours, startMinutes, 0, 0)
+    
+    // Combine end date and time for the last occurrence
+    const endDateTime = new Date(data.end_date)
+    const [endHours, endMinutes] = data.end_time.split(':').map(Number)
+    endDateTime.setHours(endHours, endMinutes, 0, 0)
     
     const taskData: CreateTaskData = {
       title: data.title,
       description: data.description,
       status: data.status,
       priority: data.priority,
-      dueDate: dueDateTime.toISOString(),
+      dueDate: startDateTime.toISOString(), // Use start date as the due date for the first occurrence
       projectId: data.project_id && data.project_id !== 'no-project' ? data.project_id : undefined,
       assigneeIds: data.assignee_ids && data.assignee_ids.length > 0 ? data.assignee_ids : undefined,
       isRecurring: true,
       recurrence: {
         frequency: data.recurrence.frequency,
         interval: data.recurrence.interval,
-        ...(data.recurrence.end_date && { endDate: format(data.recurrence.end_date, 'yyyy-MM-dd') }),
+        endDate: format(data.end_date, 'yyyy-MM-dd'), // Use the end date from the form
         ...(data.recurrence.max_occurrences && { maxOccurrences: data.recurrence.max_occurrences }),
       },
     }
@@ -277,68 +286,134 @@ export const CreateRecurringTaskDialog = ({
               )}
             />
 
-            {/* Due Date and Time - Required for Recurring Tasks */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="due_date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Due Date *</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {/* Start Date and Time - Required for Recurring Tasks */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Task Schedule</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="start_date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Start Date *</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick start date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date < new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="due_time"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Due Time *</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          type="time"
-                          className="pl-10"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="start_time"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Start Time *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="time"
+                            className="pl-10"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="end_date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>End Date *</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick end date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date < new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="end_time"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>End Time *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="time"
+                            className="pl-10"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             {/* Recurrence Settings */}
