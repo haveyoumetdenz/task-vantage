@@ -17,15 +17,8 @@ export const useFirebaseRBAC = () => {
   const isSeniorManagement = profile?.role === 'Senior Management'
   const isHR = profile?.role === 'HR'
   
-  // Debug role detection
-  console.log('🔍 RBAC Role Detection:', {
-    profileRole: profile?.role,
-    isStaff,
-    isManager,
-    isDirector,
-    isSeniorManagement,
-    isHR
-  })
+  // Debug role detection (reduced)
+  console.log('🔍 RBAC Role:', profile?.role)
 
   // Team visibility rules - Staff can see team tasks too
   const canViewTeamWork = isStaff || isManager || isDirector || isSeniorManagement || isHR

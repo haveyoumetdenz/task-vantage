@@ -59,8 +59,6 @@ export function TopNavigation() {
       return;
     }
 
-    console.log('🔔 Fetching notifications for user:', user.uid);
-    
     const notificationsRef = collection(db, 'notifications');
     const q = query(
       notificationsRef,
@@ -69,20 +67,13 @@ export function TopNavigation() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('🔔 Notifications snapshot received:', {
-        size: snapshot.size,
-        empty: snapshot.empty,
-        docs: snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }))
-      });
-      
       const notificationsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         timestamp: doc.data().timestamp?.toDate() || new Date()
       })) as Notification[];
       
-      console.log('🔔 Processed notifications:', notificationsData);
-      console.log('🔔 Mention notifications:', notificationsData.filter(n => n.type === 'mention'));
+      console.log('🔔 Notifications loaded:', notificationsData.length, 'total');
       setNotifications(notificationsData);
       setNotificationsLoading(false);
     }, (error) => {

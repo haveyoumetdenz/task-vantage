@@ -30,16 +30,8 @@ export default function Projects() {
   const { canViewTeamWork, profile, isManager, isDirector, isSeniorManagement, getVisibleTeams } = useFirebaseRBAC()
   const navigate = useNavigate()
   
-  // Debug logging
-  console.log('🔍 Projects page - User profile:', profile)
-  console.log('🔍 Projects page - User role:', profile?.role)
-  console.log('🔍 Projects page - User teamId:', profile?.teamId)
-  console.log('🔍 Projects page - canViewTeamWork:', canViewTeamWork)
-  console.log('🔍 Projects page - isManager:', isManager)
-  console.log('🔍 Projects page - isDirector:', isDirector)
-  console.log('🔍 Projects page - isSeniorManagement:', isSeniorManagement)
-  console.log('🔍 Projects page - All projects:', projects)
-  console.log('🔍 Projects page - Loading state:', loading)
+  // Debug logging (reduced)
+  console.log('🔍 Projects page - User role:', profile?.role, 'Team:', profile?.teamId)
   
   // Calculate task counts for each project
   const projectsWithCounts = projects.map(project => {
@@ -54,7 +46,6 @@ export default function Projects() {
 
   // Filter projects based on visible teams (for Staff/HR users)
   const visibleTeams = getVisibleTeams()
-  console.log('🔍 Projects page - Visible teams:', visibleTeams)
   
   // If profile is not loaded, don't filter projects yet
   if (!profile) {
@@ -72,43 +63,23 @@ export default function Projects() {
   }
   
   const filteredProjectsByTeam = projectsWithCounts.filter(project => {
-    console.log('🔍 Filtering project:', {
-      id: project.id,
-      title: project.title,
-      teamId: project.teamId,
-      userId: project.userId,
-      visibleTeams: visibleTeams,
-      isSeniorManagement,
-      isManager,
-      isDirector
-    })
-    
     // If user can view all teams (Senior Management, Director), show all projects
     if (isSeniorManagement || isDirector) {
-      console.log('🔍 User can view all teams - showing project', {
-        isSeniorManagement,
-        isManager,
-        isDirector,
-        userRole: profile?.role
-      })
       return true
     }
     
     // For Staff/HR/Manager users, only show projects from their visible teams
     // If user profile is not loaded, don't show any projects
     if (!profile) {
-      console.log('🔍 User profile not loaded - hiding project:', project.title)
       return false
     }
     
     // For Staff/HR/Manager users, only show projects from their visible teams
     // Projects must have a teamId and that teamId must be in the user's visible teams
     const shouldShow = project.teamId && visibleTeams.includes(project.teamId)
-    console.log('🔍 Should show project:', shouldShow, 'because teamId:', project.teamId, 'is in visibleTeams:', visibleTeams, 'project title:', project.title)
     return shouldShow
   })
   
-  console.log('🔍 Projects page - Filtered projects by team:', filteredProjectsByTeam)
 
   const handleAddTask = (projectId: string) => {
     setSelectedProjectId(projectId)
