@@ -51,36 +51,26 @@ export default function UserManagement() {
   const { isHR, isSeniorManagement, isManager } = useFirebaseRBAC()
 
   // Check if user has permission to access this page
-  if (!isHR && !isSeniorManagement && !isManager) {
-    return (
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-              <p className="text-muted-foreground">
-                You don't have permission to access user management. This page is restricted to HR, Senior Management, and Managers.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  const hasPermission = isHR || isSeniorManagement || isManager
 
   // Load users from Firebase
   useEffect(() => {
+    if (!hasPermission) return
+
     const usersRef = collection(db, 'profiles')
-    const q = query(usersRef, orderBy('createdAt', 'desc'))
+    // Remove orderBy for now to avoid issues with missing createdAt fields
+    const q = query(usersRef)
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      let usersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        deactivatedAt: doc.data().deactivatedAt?.toDate(),
-      })) as User[]
+      let usersData = snapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date()),
+          deactivatedAt: data.deactivatedAt?.toDate ? data.deactivatedAt.toDate() : (data.deactivatedAt ? new Date(data.deactivatedAt) : undefined),
+        }
+      }) as User[]
 
       // Filter users based on role permissions
       if (isManager && !isHR && !isSeniorManagement) {
@@ -88,6 +78,13 @@ export default function UserManagement() {
         usersData = usersData.filter(user => user.teamId === profile?.teamId)
       }
       // HR and Senior Management can see all users (no filtering)
+
+      // Sort by createdAt (newest first)
+      usersData.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+        return dateB - dateA
+      })
 
       setUsers(usersData)
       setLoading(false)
@@ -97,7 +94,7 @@ export default function UserManagement() {
     })
 
     return () => unsubscribe()
-  }, [isManager, isHR, isSeniorManagement, profile?.teamId])
+  }, [hasPermission, isManager, isHR, isSeniorManagement, profile?.teamId])
 
   // Filter users based on search term
   useEffect(() => {
@@ -138,6 +135,25 @@ export default function UserManagement() {
       <Badge className={colors[role as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
         {role}
       </Badge>
+    )
+  }
+
+  // Check if user has permission to access this page
+  if (!hasPermission) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+              <p className="text-muted-foreground">
+                You don't have permission to access user management. This page is restricted to HR, Senior Management, and Managers.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
