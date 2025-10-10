@@ -47,6 +47,7 @@ export function AppSidebar() {
   
   // Debug logging
   console.log('Sidebar Debug:', { profile, isManager, loading });
+  console.log('RBAC Debug:', { isHR, isSeniorManagement, role: profile?.role });
   
   const isActive = (path: string) => {
     if (path === "/") {
@@ -86,8 +87,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin Section - Only for HR and Senior Management */}
-        {(isHR || isSeniorManagement) && (
+        {/* Admin Section - For HR, Senior Management, and Managers */}
+        {(isHR || isSeniorManagement || isManager) && (
           <SidebarGroup>
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>

@@ -48,10 +48,10 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true)
   
   const { profile } = useFirebaseProfile()
-  const { isHR, isSeniorManagement } = useFirebaseRBAC()
+  const { isHR, isSeniorManagement, isManager } = useFirebaseRBAC()
 
   // Check if user has permission to access this page
-  if (!isHR && !isSeniorManagement) {
+  if (!isHR && !isSeniorManagement && !isManager) {
     return (
       <div className="container mx-auto p-6">
         <Card>
@@ -60,7 +60,7 @@ export default function UserManagement() {
               <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
               <p className="text-muted-foreground">
-                You don't have permission to access user management. This page is restricted to HR and Senior Management.
+                You don't have permission to access user management. This page is restricted to HR, Senior Management, and Managers.
               </p>
             </div>
           </CardContent>
@@ -75,12 +75,19 @@ export default function UserManagement() {
     const q = query(usersRef, orderBy('createdAt', 'desc'))
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({
+      let usersData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate(),
         deactivatedAt: doc.data().deactivatedAt?.toDate(),
       })) as User[]
+
+      // Filter users based on role permissions
+      if (isManager && !isHR && !isSeniorManagement) {
+        // Managers can only see users from their own team
+        usersData = usersData.filter(user => user.teamId === profile?.teamId)
+      }
+      // HR and Senior Management can see all users (no filtering)
 
       setUsers(usersData)
       setLoading(false)
@@ -90,7 +97,7 @@ export default function UserManagement() {
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [isManager, isHR, isSeniorManagement, profile?.teamId])
 
   // Filter users based on search term
   useEffect(() => {
