@@ -65,6 +65,9 @@ export default function UserManagement() {
       let usersData = snapshot.docs.map(doc => {
         const data = doc.data()
         
+        // Debug: Log raw data for each user
+        console.log('🔍 Raw user data for', doc.id, ':', data)
+        
         // Safe date handling
         let createdAt: Date
         let deactivatedAt: Date | undefined
@@ -97,12 +100,42 @@ export default function UserManagement() {
           deactivatedAt = undefined
         }
         
-        return {
+        // Map team name based on teamId
+        let teamName = 'No Team'
+        if (data.teamId) {
+          switch (data.teamId) {
+            case 'hr':
+              teamName = 'HR'
+              break
+            case 'engineering-1':
+              teamName = 'Engineering 1'
+              break
+            case 'engineering-2':
+              teamName = 'Engineering 2'
+              break
+            default:
+              teamName = data.teamId
+          }
+        }
+        
+        // Determine if user is active (default to true if not set)
+        const isActive = data.isActive !== false && !data.deactivatedAt
+        
+        const userData = {
           id: doc.id,
-          ...data,
+          email: data.email || '',
+          fullName: data.fullName || data.displayName || 'Unknown',
+          role: data.role || 'Staff',
+          teamId: data.teamId || '',
+          teamName: teamName,
+          isActive: isActive,
           createdAt,
           deactivatedAt,
+          deactivationReason: data.deactivationReason || '',
         }
+        
+        console.log('🔍 Processed user data:', userData)
+        return userData
       }) as User[]
 
       // HR and Senior Management can see all users (no filtering needed)
