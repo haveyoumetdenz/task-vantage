@@ -87,8 +87,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin Section - For HR, Senior Management, and Managers */}
-        {(isHR || isSeniorManagement || isManager) && (
+        {/* Admin Section - Only for HR and Senior Management */}
+        {(isHR || isSeniorManagement) && (
           <SidebarGroup>
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>

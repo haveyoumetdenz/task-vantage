@@ -51,7 +51,7 @@ export default function UserManagement() {
   const { isHR, isSeniorManagement, isManager } = useFirebaseRBAC()
 
   // Check if user has permission to access this page
-  const hasPermission = isHR || isSeniorManagement || isManager
+  const hasPermission = isHR || isSeniorManagement
 
   // Load users from Firebase
   useEffect(() => {
@@ -64,20 +64,48 @@ export default function UserManagement() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let usersData = snapshot.docs.map(doc => {
         const data = doc.data()
+        
+        // Safe date handling
+        let createdAt: Date
+        let deactivatedAt: Date | undefined
+        
+        try {
+          // Handle createdAt
+          if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            createdAt = data.createdAt.toDate()
+          } else if (data.createdAt) {
+            createdAt = new Date(data.createdAt)
+          } else {
+            createdAt = new Date() // Default to now
+          }
+        } catch (error) {
+          console.warn('Error parsing createdAt for user:', doc.id, error)
+          createdAt = new Date()
+        }
+        
+        try {
+          // Handle deactivatedAt
+          if (data.deactivatedAt && typeof data.deactivatedAt.toDate === 'function') {
+            deactivatedAt = data.deactivatedAt.toDate()
+          } else if (data.deactivatedAt) {
+            deactivatedAt = new Date(data.deactivatedAt)
+          } else {
+            deactivatedAt = undefined
+          }
+        } catch (error) {
+          console.warn('Error parsing deactivatedAt for user:', doc.id, error)
+          deactivatedAt = undefined
+        }
+        
         return {
           id: doc.id,
           ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date()),
-          deactivatedAt: data.deactivatedAt?.toDate ? data.deactivatedAt.toDate() : (data.deactivatedAt ? new Date(data.deactivatedAt) : undefined),
+          createdAt,
+          deactivatedAt,
         }
       }) as User[]
 
-      // Filter users based on role permissions
-      if (isManager && !isHR && !isSeniorManagement) {
-        // Managers can only see users from their own team
-        usersData = usersData.filter(user => user.teamId === profile?.teamId)
-      }
-      // HR and Senior Management can see all users (no filtering)
+      // HR and Senior Management can see all users (no filtering needed)
 
       // Sort by createdAt (newest first)
       usersData.sort((a, b) => {
@@ -94,7 +122,7 @@ export default function UserManagement() {
     })
 
     return () => unsubscribe()
-  }, [hasPermission, isManager, isHR, isSeniorManagement, profile?.teamId])
+  }, [hasPermission])
 
   // Filter users based on search term
   useEffect(() => {
@@ -148,7 +176,7 @@ export default function UserManagement() {
               <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
               <p className="text-muted-foreground">
-                You don't have permission to access user management. This page is restricted to HR, Senior Management, and Managers.
+                You don't have permission to access user management. This page is restricted to HR and Senior Management only.
               </p>
             </div>
           </CardContent>
