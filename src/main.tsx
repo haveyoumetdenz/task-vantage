@@ -3,6 +3,7 @@ import App from "./App.tsx";
 import "./index.css";
 import { auth, db } from "./integrations/firebase/client";
 import "./utils/manualNotificationTest"; // Make test function available globally
+import "./utils/updateUserRole"; // Make user role update function available globally
 
 // Make Firebase available globally for debugging
 (window as any).auth = auth;
