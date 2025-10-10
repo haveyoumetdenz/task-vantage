@@ -6,9 +6,11 @@ import {
   BarChart3,
   Users,
   Settings,
+  UserCog,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useFirebaseProfile } from "@/hooks/useFirebaseProfile";
+import { useFirebaseRBAC } from "@/hooks/useFirebaseRBAC";
 
 import {
   Sidebar,
@@ -30,6 +32,10 @@ const navigationItems = [
   { title: "Team", url: "/team", icon: Users },
 ];
 
+const adminItems = [
+  { title: "User Management", url: "/user-management", icon: UserCog },
+];
+
 const settingsItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -37,6 +43,7 @@ const settingsItems = [
 export function AppSidebar() {
   const location = useLocation();
   const { profile, isManager, loading } = useFirebaseProfile();
+  const { isHR, isSeniorManagement } = useFirebaseRBAC();
   
   // Debug logging
   console.log('Sidebar Debug:', { profile, isManager, loading });
@@ -78,6 +85,27 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin Section - Only for HR and Senior Management */}
+        {(isHR || isSeniorManagement) && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} className={getNavClasses(item.url)}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>

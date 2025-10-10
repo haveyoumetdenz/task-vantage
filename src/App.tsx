@@ -24,6 +24,7 @@ import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
 import FirebaseTest from "./pages/FirebaseTest";
 import ProfileDebug from "./pages/ProfileDebug";
+import UserManagement from "./pages/UserManagement";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,13 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <TeamManagement />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/user-management" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <UserManagement />
                 </AppLayout>
               </ProtectedRoute>
             } />
