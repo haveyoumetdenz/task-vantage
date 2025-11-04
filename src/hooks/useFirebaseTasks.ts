@@ -4,6 +4,8 @@ import { db } from '@/integrations/firebase/client'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { createTaskAssignmentNotification, createTaskCompletionNotification } from '@/utils/notifications'
 import { useToast } from '@/hooks/use-toast'
+import { updateProjectProgress } from '@/utils/projectProgress'
+import { validateTaskData, sanitizeTaskData } from '@/utils/taskValidation'
 
 export interface Task {
   id: string
@@ -64,16 +66,22 @@ export const useFirebaseTasks = (projectId?: string) => {
       return
     }
 
-    // Create query for tasks - user's own tasks OR tasks assigned to user
-    let q = query(
-      collection(db, 'tasks'),
-      where('assigneeIds', 'array-contains', user.uid),
-      orderBy('createdAt', 'desc')
-    )
-
-    // Add project filter if specified
+    // Create query for tasks
+    let q
     if (projectId) {
-      q = query(q, where('projectId', '==', projectId))
+      // For project views, show ALL tasks in the project (not just assigned to user)
+      q = query(
+        collection(db, 'tasks'),
+        where('projectId', '==', projectId),
+        orderBy('createdAt', 'desc')
+      )
+    } else {
+      // For general task views, show user's own tasks OR tasks assigned to user
+      q = query(
+        collection(db, 'tasks'),
+        where('assigneeIds', 'array-contains', user.uid),
+        orderBy('createdAt', 'desc')
+      )
     }
 
     // Set up real-time listener
@@ -106,9 +114,21 @@ export const useFirebaseTasks = (projectId?: string) => {
     if (!user) return null
 
     try {
-      // Filter out undefined values to avoid Firestore errors
+      // Validate task data before processing
+      const validation = validateTaskData(taskData)
+      if (!validation.valid) {
+        toast({
+          title: "Validation Error",
+          description: validation.errors.join(', '),
+          variant: "destructive",
+        })
+        return null
+      }
+
+      // Sanitize and filter out undefined values to avoid Firestore errors
+      const sanitizedData = sanitizeTaskData(taskData)
       const filteredTaskData = Object.fromEntries(
-        Object.entries(taskData).filter(([_, value]) => value !== undefined)
+        Object.entries(sanitizedData).filter(([_, value]) => value !== undefined)
       )
 
       // Handle recurrence object separately to filter out undefined values
@@ -160,6 +180,19 @@ export const useFirebaseTasks = (projectId?: string) => {
           console.log('✅ Task assignment notifications sent')
         } catch (error) {
           console.error('❌ Error sending task assignment notifications:', error)
+        }
+      }
+      
+      // Update project progress if task is created as completed
+      if (taskDoc.status === 'completed' && taskDoc.projectId) {
+        console.log(`📊 Task ${docRef.id} created as completed, updating project ${taskDoc.projectId} progress`)
+        try {
+          // Get all tasks including the newly created one
+          const allTasks = [...tasks, { ...taskDoc, id: docRef.id }]
+          await updateProjectProgress(taskDoc.projectId, allTasks)
+        } catch (error) {
+          console.error('❌ Error updating project progress for new completed task:', error)
+          // Don't fail the task creation if project progress update fails
         }
       }
       
@@ -258,6 +291,20 @@ export const useFirebaseTasks = (projectId?: string) => {
       // If task is being completed and it's recurring, generate next occurrence
       if (updateData.status === 'completed' && updateData.isRecurring) {
         await generateNextRecurringTask(id)
+      }
+
+      // Update project progress if task status changed to completed
+      if (updateData.status === 'completed') {
+        const currentTask = tasks.find(t => t.id === id)
+        if (currentTask && currentTask.projectId) {
+          console.log(`📊 Task ${id} completed, updating project ${currentTask.projectId} progress`)
+          try {
+            await updateProjectProgress(currentTask.projectId, tasks)
+          } catch (error) {
+            console.error('❌ Error updating project progress:', error)
+            // Don't fail the task update if project progress update fails
+          }
+        }
       }
 
       toast({
@@ -372,7 +419,24 @@ export const useFirebaseTasks = (projectId?: string) => {
     if (!user) return false
 
     try {
+      // Get the task before deleting to check if it has a projectId
+      const taskToDelete = tasks.find(t => t.id === taskId)
+      const projectId = taskToDelete?.projectId
+      
       await deleteDoc(doc(db, 'tasks', taskId))
+      
+      // Update project progress if the deleted task was associated with a project
+      if (projectId) {
+        console.log(`📊 Task ${taskId} deleted, updating project ${projectId} progress`)
+        try {
+          // Get remaining tasks for this project (excluding the deleted one)
+          const remainingTasks = tasks.filter(t => t.id !== taskId)
+          await updateProjectProgress(projectId, remainingTasks)
+        } catch (error) {
+          console.error('❌ Error updating project progress after task deletion:', error)
+          // Don't fail the task deletion if project progress update fails
+        }
+      }
       
       toast({
         title: 'Success',

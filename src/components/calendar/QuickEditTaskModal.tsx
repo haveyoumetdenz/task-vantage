@@ -58,14 +58,35 @@ export const QuickEditTaskModal: React.FC<QuickEditTaskModalProps> = ({
       ? new Date(`${format(formData.due_date, 'yyyy-MM-dd')}T${formData.due_time}:00`)
       : undefined
 
-    onSave({
-      id: task.id,
-      title: formData.title,
-      description: formData.description,
-      status: formData.status,
-      priority: formData.priority,
-      due_date: dueDateTime?.toISOString(),
-    })
+    // Check if this is a virtual instance
+    const isVirtualInstance = 'parentTaskId' in task && task.parentTaskId
+
+    if (isVirtualInstance) {
+      // For virtual instances, we need to update the specific instance
+      // The parent component should handle this with the virtual instance update system
+      onSave({
+        id: task.id,
+        parentTaskId: task.parentTaskId,
+        dueDate: task.dueDate,
+        title: formData.title,
+        description: formData.description,
+        status: formData.status,
+        priority: formData.priority,
+        due_date: dueDateTime?.toISOString(),
+        isVirtualInstance: true,
+      })
+    } else {
+      // For regular tasks, use the normal update
+      onSave({
+        id: task.id,
+        title: formData.title,
+        description: formData.description,
+        status: formData.status,
+        priority: formData.priority,
+        due_date: dueDateTime?.toISOString(),
+      })
+    }
+    
     onOpenChange(false)
   }
 

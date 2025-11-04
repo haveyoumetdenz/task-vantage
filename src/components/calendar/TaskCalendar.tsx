@@ -24,6 +24,8 @@ import { Task } from '@/hooks/useFirebaseTasks'
 import { TeamTask } from '@/hooks/useFirebaseTeamHierarchyTasks'
 import { TeamMember } from '@/hooks/useFirebaseTeamMembers'
 import { getDeadlineInfo } from '@/utils/deadlines'
+import { useStaticVirtualInstances } from '@/hooks/useStaticVirtualInstances'
+import { StaticVirtualInstance } from '@/hooks/useStaticVirtualInstances'
 import { QuickEditTaskModal } from './QuickEditTaskModal'
 import { TaskNotifications } from './TaskNotifications'
 import { RecurringTaskDialog } from './RecurringTaskDialog'
@@ -38,7 +40,8 @@ import {
   addMonths,
   isSameDay,
   isToday,
-  parseISO
+  parseISO,
+  differenceInDays
 } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -68,8 +71,42 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
   const [quickEditTask, setQuickEditTask] = useState<Task | TeamTask | null>(null)
   const [showQuickEdit, setShowQuickEdit] = useState(false)
 
+  // Calculate date range for virtual instances
+  const getDateRange = () => {
+    const start = new Date(currentDate)
+    const end = new Date(currentDate)
+    
+    switch (view) {
+      case 'month':
+        start.setDate(1)
+        end.setMonth(end.getMonth() + 1)
+        end.setDate(0)
+        break
+      case 'week':
+        start.setDate(start.getDate() - start.getDay())
+        end.setDate(start.getDate() + 6)
+        break
+      case 'day':
+        // Same day for start and end
+        break
+    }
+    
+    return { start, end }
+  }
+
+  const { start: startDate, end: endDate } = getDateRange()
+  const { virtualInstances, updateInstance, loading: virtualInstancesLoading } = useStaticVirtualInstances(tasks, startDate, endDate)
+
+  // Helper function to determine task urgency - simplified to always return normal
+  const getTaskUrgency = (task: Task | TeamTask) => {
+    return 'normal'
+  }
+
   // Filter tasks that have due dates OR are recurring, and by selected member
   const tasksWithDueDates = tasks.filter(task => {
+    // Exclude completed and cancelled tasks
+    if (task.status === 'completed' || task.status === 'cancelled') return false
+    
     // Include tasks with due dates OR recurring tasks (even without due dates)
     if (!task.dueDate && !task.isRecurring) return false
     if (teamMode && selectedMember !== 'all') {
@@ -102,28 +139,67 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
     })
   }
 
+  // Handle virtual instance updates
+  const handleVirtualInstanceUpdate = async (instance: StaticVirtualInstance, updates: Partial<Task>) => {
+    try {
+      // Safety check for undefined dueDate
+      if (!instance.dueDate) {
+        console.error('Cannot update virtual instance: missing dueDate', instance)
+        return
+      }
+      await updateInstance(instance.parentTaskId, format(parseISO(instance.dueDate), 'yyyy-MM-dd'), updates)
+    } catch (error) {
+      console.error('Error updating virtual instance:', error)
+    }
+  }
+
   // Handle task click with quick edit option
   const handleTaskItemClick = (task: Task | TeamTask, event: React.MouseEvent) => {
     event.stopPropagation()
     
-    // If Ctrl/Cmd is held, open quick edit modal
-    if (event.ctrlKey || event.metaKey) {
+    // Check if this is a virtual instance
+    const isVirtualInstance = 'parentTaskId' in task && task.parentTaskId
+    
+    if (isVirtualInstance) {
+      // For virtual instances, always open quick edit modal to edit just this instance
       setQuickEditTask(task)
       setShowQuickEdit(true)
     } else {
-      onTaskClick(task)
+      // For regular tasks, use the normal behavior
+      if (event.ctrlKey || event.metaKey) {
+        setQuickEditTask(task)
+        setShowQuickEdit(true)
+      } else {
+        onTaskClick(task)
+      }
     }
   }
 
   const handleQuickEditSave = (taskData: any) => {
-    if (onTaskUpdate) {
-      onTaskUpdate(taskData)
+    // Check if this is a virtual instance update
+    if (taskData.isVirtualInstance && taskData.parentTaskId) {
+      // Use the virtual instance update system
+      handleVirtualInstanceUpdate(taskData, {
+        title: taskData.title,
+        description: taskData.description,
+        status: taskData.status,
+        priority: taskData.priority,
+        dueDate: taskData.due_date,
+      })
+    } else {
+      // Use the regular task update
+      if (onTaskUpdate) {
+        onTaskUpdate(taskData)
+      }
     }
   }
 
-  // Get tasks for a specific date
+  // Get tasks for a specific date (including virtual instances)
   const getTasksForDate = (date: Date) => {
-    return tasksWithDueDates.filter(task => {
+    const dateStr = format(date, 'yyyy-MM-dd')
+    
+    // Get regular tasks for this date
+    const regularTasks = tasksWithDueDates.filter(task => {
       if (!task.dueDate) return false
       
       // For regular tasks, show on their due date
@@ -131,22 +207,56 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
         return isSameDay(parseISO(task.dueDate), date)
       }
       
-      // For recurring tasks, check if this date matches the recurrence pattern
-      if (task.isRecurring && task.recurrence) {
-        const taskDate = parseISO(task.dueDate)
-        const { frequency, interval } = task.recurrence
-        
-        // Check if this date is a valid occurrence of the recurring task
-        return isRecurringTaskOccurrence(taskDate, date, frequency, interval)
-      }
-      
-      return isSameDay(parseISO(task.dueDate), date)
+      return false
     })
+    
+    // Get virtual instances for this date
+    const virtualTasksForDate = virtualInstances.filter(instance => {
+      // Safety check for undefined dueDate
+      if (!instance.dueDate) {
+        console.warn('Virtual instance missing dueDate:', instance)
+        return false
+      }
+      try {
+        const instanceDate = format(parseISO(instance.dueDate), 'yyyy-MM-dd')
+        return instanceDate === dateStr
+      } catch (error) {
+        console.error('Error parsing virtual instance dueDate:', instance.dueDate, error)
+        return false
+      }
+    })
+    
+    // Combine regular tasks and virtual instances
+    const allTasks = [...regularTasks, ...virtualTasksForDate]
+    
+    // Filter by selected member if in team mode
+    if (teamMode && selectedMember !== 'all') {
+      return allTasks.filter(task => {
+        if ('userId' in task) {
+          return task.userId === selectedMember
+        }
+        return false
+      })
+    }
+    
+    return allTasks
   }
 
   // Helper function to check if a date is a valid occurrence of a recurring task
-  const isRecurringTaskOccurrence = (startDate: Date, checkDate: Date, frequency: string, interval: number) => {
+  const isRecurringTaskOccurrence = (startDate: Date, checkDate: Date, frequency: string, interval: number, recurrence?: any) => {
     if (checkDate < startDate) return false
+    
+    // Check end date condition
+    if (recurrence?.endDate) {
+      const endDate = new Date(recurrence.endDate)
+      if (checkDate > endDate) return false
+    }
+    
+    // Check max occurrences condition
+    if (recurrence?.maxOccurrences) {
+      const occurrenceNumber = getOccurrenceNumber(startDate, checkDate, frequency, interval)
+      if (occurrenceNumber > recurrence.maxOccurrences) return false
+    }
     
     const diffInDays = Math.floor((checkDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     
@@ -169,6 +279,24 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
     }
   }
 
+  // Helper function to calculate which occurrence number this is
+  const getOccurrenceNumber = (startDate: Date, checkDate: Date, frequency: string, interval: number): number => {
+    const diffInDays = Math.floor((checkDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    
+    switch (frequency) {
+      case 'daily':
+        return Math.floor(diffInDays / interval) + 1
+      case 'weekly':
+        return Math.floor(diffInDays / (interval * 7)) + 1
+      case 'monthly':
+        return Math.floor(diffInDays / (interval * 30)) + 1
+      case 'yearly':
+        return Math.floor(diffInDays / (interval * 365)) + 1
+      default:
+        return 1
+    }
+  }
+
 
   // Get tasks for current view period
   const getTasksForPeriod = () => {
@@ -180,6 +308,12 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
                endOfMonth(currentDate)
 
     return tasksWithDueDates.filter(task => {
+      // For recurring tasks, always include them - let getTasksForDate handle the occurrence logic
+      if (task.isRecurring && task.recurrence) {
+        return true
+      }
+      
+      // For non-recurring tasks, check if due date is in period
       if (!task.dueDate) return false
       const taskDate = parseISO(task.dueDate)
       return taskDate >= start && taskDate <= end
@@ -217,34 +351,42 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
                 </div>
               </div>
               <div className="space-y-1 overflow-y-auto">
-                {dayTasks.map(task => (
-                  <div
-                    key={task.id}
-                    onClick={(e) => handleTaskItemClick(task, e)}
-                    className={cn(
-                      "p-1 text-xs rounded cursor-pointer hover:bg-muted/80 transition-colors",
-                      task.isProject ? "bg-blue-100 border-l-2 border-blue-500" : "bg-muted"
-                    )}
-                  >
-                    <p className="font-medium truncate">
-                      {task.isProject && "📁 "}{task.title}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Badge 
-                        variant={task.status === 'completed' ? 'secondary' : task.isProject ? 'default' : 'outline'} 
-                        className={cn(
-                          "text-xs",
-                          task.isProject && "bg-blue-500 text-white"
-                        )}
-                      >
-                        {task.isProject ? 'Project' : task.status.replace('_', ' ')}
-                      </Badge>
-                      {task.isRecurring && (
-                        <Repeat className="h-3 w-3 text-blue-600" />
+                {dayTasks.map(task => {
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={(e) => handleTaskItemClick(task, e)}
+                      className={cn(
+                        "p-1 text-xs rounded cursor-pointer hover:bg-muted/80 transition-colors",
+                        task.isProject 
+                          ? "bg-blue-100 border-l-2 border-blue-500" 
+                          : "bg-blue-100 border-l-2 border-blue-500"
                       )}
+                      style={{
+                        backgroundColor: '#dbeafe',
+                        borderLeft: '2px solid #3b82f6'
+                      }}
+                    >
+                      <p className="font-medium truncate">
+                        {task.isProject && "📁 "}{task.title}
+                      </p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <Badge 
+                          variant={task.status === 'completed' ? 'secondary' : task.isProject ? 'default' : 'outline'} 
+                          className={cn(
+                            "text-xs",
+                            task.isProject && "bg-blue-500 text-white"
+                          )}
+                        >
+                          {task.isProject ? 'Project' : (task.status || 'todo').replace('_', ' ')}
+                        </Badge>
+                        {task.isRecurring && (
+                          <Repeat className="h-3 w-3 text-blue-600" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 {dayTasks.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-2">No tasks</p>
                 )}
@@ -272,14 +414,13 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {dayTasks.length > 0 ? (
             dayTasks.map(task => {
-              const deadlineInfo = getDeadlineInfo(task.dueDate, task.status, task.completedAt)
               return (
                 <div
                   key={task.id}
                   onClick={(e) => handleTaskItemClick(task, e)}
                   className={cn(
                     "p-4 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors",
-                    deadlineInfo.className
+                    "bg-blue-100 border-blue-200"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -293,7 +434,7 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
                           variant={task.status === 'completed' ? 'secondary' : 'outline'} 
                           className="text-xs"
                         >
-                          {task.status.replace('_', ' ')}
+                          {(task.status || 'todo').replace('_', ' ')}
                         </Badge>
                         {task.isRecurring && (
                           <Badge variant="outline" className="text-xs text-blue-600">
@@ -409,7 +550,6 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
                       {/* Tasks for this day */}
                       <div className="space-y-1 overflow-hidden">
                         {dayTasks.slice(0, 3).map(task => {
-                          const deadlineInfo = getDeadlineInfo(task.dueDate, task.status, task.completedAt)
                           const teamTask = task as TeamTask
                           
                           // Generate color based on assignee name for consistent colors
@@ -432,10 +572,7 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
                               onClick={() => onTaskClick(task)}
                               className={cn(
                                 "text-xs p-1 rounded cursor-pointer hover:opacity-80 transition-opacity truncate flex items-center gap-1",
-                                deadlineInfo.status === 'overdue' && "bg-destructive/20 text-destructive border border-destructive/30",
-                                deadlineInfo.status === 'due_soon' && "bg-yellow-100 text-yellow-800 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700",
-                                deadlineInfo.status === 'completed' && "bg-muted text-muted-foreground opacity-60",
-                                deadlineInfo.status === 'normal' && teamMode && teamTask.assigneeName ? getAssigneeColor(teamTask.assigneeName) : "bg-primary/10 text-primary border border-primary/20"
+                                "bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700"
                               )}
                               title={`${task.title}${teamMode && teamTask.assigneeName ? ` (${teamTask.assigneeName})` : ''}`}
                             >

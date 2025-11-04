@@ -10,6 +10,7 @@ import { useFirebaseProjects, Project } from "@/hooks/useFirebaseProjects"
 import { useFirebaseTasks } from "@/hooks/useFirebaseTasks"
 import { CreateTaskDialog } from "@/components/forms/CreateTaskDialog"
 import { format } from "date-fns"
+import { updateProjectProgress } from "@/utils/projectProgress"
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
@@ -19,6 +20,16 @@ export default function ProjectDetail() {
   const { tasks, loading: tasksLoading } = useFirebaseTasks(id)
 
   const project = projects.find(p => p.id === id)
+
+  // Trigger project progress update when tasks are loaded
+  useEffect(() => {
+    if (id && tasks.length > 0 && !tasksLoading) {
+      console.log('🔄 Triggering project progress update for project:', id)
+      updateProjectProgress(id, tasks).catch(error => {
+        console.error('❌ Error updating project progress:', error)
+      })
+    }
+  }, [id, tasks, tasksLoading])
 
   if (projectsLoading || tasksLoading) {
     return (
@@ -42,12 +53,54 @@ export default function ProjectDetail() {
     )
   }
 
-  const totalTasks = tasks.length
-  const completedTasks = tasks.filter(t => t.status === 'completed').length
-  const inProgressTasks = tasks.filter(t => t.status === 'in_progress').length
-  const todoTasks = tasks.filter(t => t.status === 'todo').length
+  // Group recurring tasks and their instances to avoid duplicates
+  const processedTasks = tasks.reduce((acc, task) => {
+    // If this is a virtual instance (has parentTaskId), group it with its parent
+    if (task.parentTaskId) {
+      const parentId = task.parentTaskId
+      if (!acc[parentId]) {
+        // Find the parent task
+        const parentTask = tasks.find(t => t.id === parentId)
+        if (parentTask) {
+          acc[parentId] = {
+            ...parentTask,
+            instances: [task],
+            // For navigation, use the parent task ID
+            navigationId: parentId
+          }
+        }
+      } else {
+        acc[parentId].instances.push(task)
+      }
+    } else {
+      // Regular task or parent recurring task
+      acc[task.id] = {
+        ...task,
+        instances: [],
+        // For navigation, use the task's own ID
+        navigationId: task.id
+      }
+    }
+    return acc
+  }, {} as Record<string, any>)
+
+  const taskGroups = Object.values(processedTasks)
+  const totalTasks = taskGroups.length
+  const completedTasks = taskGroups.filter(t => t.status === 'completed').length
+  const inProgressTasks = taskGroups.filter(t => t.status === 'in_progress').length
+  const todoTasks = taskGroups.filter(t => t.status === 'todo').length
 
   const completionPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+
+  // Calculate real-time progress as fallback (same logic as Projects.tsx)
+  const realTimeProgress = totalTasks > 0 
+    ? Math.round((completedTasks / totalTasks) * 100) 
+    : 0
+  
+  // Use real-time progress if database progress seems outdated
+  const displayProgress = (project.progress === 0 && realTimeProgress > 0) 
+    ? realTimeProgress 
+    : project.progress
 
   // Debug logging
   console.log('ProjectDetail Debug:', {
@@ -59,6 +112,9 @@ export default function ProjectDetail() {
     inProgressTasks,
     todoTasks,
     completionPercentage,
+    realTimeProgress,
+    displayProgress,
+    projectProgress: project.progress,
     tasks: tasks.map(t => ({ id: t.id, title: t.title, status: t.status, projectId: t.projectId }))
   })
 
@@ -120,9 +176,9 @@ export default function ProjectDetail() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Progress</span>
-                  <span className="font-medium">{project.progress}%</span>
+                  <span className="font-medium">{displayProgress}%</span>
                 </div>
-                <Progress value={project.progress} className="h-3" />
+                <Progress value={displayProgress} className="h-3" />
               </div>
             </CardContent>
           </Card>
@@ -139,33 +195,47 @@ export default function ProjectDetail() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {tasks.map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  {taskGroups.map((taskGroup) => (
+                    <div 
+                      key={taskGroup.id} 
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/tasks/${taskGroup.navigationId}`)}
+                    >
                       <div className="flex-1">
                         <div className="flex items-center space-x-3">
-                          <CheckSquare className={`h-4 w-4 ${task.status === 'completed' ? 'text-success' : 'text-muted-foreground'}`} />
+                          <CheckSquare className={`h-4 w-4 ${taskGroup.status === 'completed' ? 'text-success' : 'text-muted-foreground'}`} />
                           <div>
-                            <h4 className="font-medium">{task.title}</h4>
-                            {task.description && (
-                              <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                            <h4 className="font-medium hover:text-primary transition-colors">{taskGroup.title}</h4>
+                            {taskGroup.description && (
+                              <p className="text-sm text-muted-foreground mt-1">{taskGroup.description}</p>
+                            )}
+                            {taskGroup.instances && taskGroup.instances.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {taskGroup.instances.length} instance{taskGroup.instances.length > 1 ? 's' : ''}
+                              </p>
                             )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <Badge variant={
-                          task.status === 'completed' ? 'secondary' : 
-                          task.status === 'in_progress' ? 'default' : 'outline'
+                          taskGroup.status === 'completed' ? 'secondary' : 
+                          taskGroup.status === 'in_progress' ? 'default' : 'outline'
                         }>
-                          {task.status.replace('_', ' ')}
+                          {taskGroup.status.replace('_', ' ')}
                         </Badge>
                         <Badge variant={
-                          task.priority === 'urgent' ? 'destructive' :
-                          task.priority === 'high' ? 'destructive' :
-                          task.priority === 'medium' ? 'default' : 'outline'
+                          taskGroup.priority === 'urgent' ? 'destructive' :
+                          taskGroup.priority === 'high' ? 'destructive' :
+                          taskGroup.priority === 'medium' ? 'default' : 'outline'
                         }>
-                          {task.priority}
+                          {taskGroup.priority}
                         </Badge>
+                        {taskGroup.instances && taskGroup.instances.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            Recurring
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   ))}

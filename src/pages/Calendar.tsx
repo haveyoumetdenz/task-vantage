@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TaskCalendar } from '@/components/calendar/TaskCalendar'
+import { CalendarWithVirtualInstances } from '@/components/calendar/CalendarWithVirtualInstances'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useFirebaseTasks, Task } from '@/hooks/useFirebaseTasks'
@@ -130,11 +130,8 @@ export default function Calendar() {
           </TabsList>
           
           <TabsContent value="personal">
-            <TaskCalendar 
-              tasks={deduplicateTasks([...tasks, ...projectEvents])} 
-              onTaskClick={handleTaskClick}
-              onTaskUpdate={handleTaskUpdate}
-              onCreateRecurringTasks={handleCreateRecurringTasks}
+            <CalendarWithVirtualInstances 
+              teamMode={false}
             />
           </TabsContent>
           
@@ -150,11 +147,7 @@ export default function Calendar() {
                 <span className="text-sm">Include my tasks</span>
               </label>
             </div>
-            <TaskCalendar 
-              tasks={includeMyTasks ? deduplicateTasks([...teamTasks, ...tasks, ...projectEvents]) : [...teamTasks, ...projectEvents]} 
-              onTaskClick={handleTaskClick}
-              onTaskUpdate={handleTaskUpdate}
-              onCreateRecurringTasks={handleCreateRecurringTasks}
+            <CalendarWithVirtualInstances 
               teamMode={true}
               teamMembers={teamMembers}
             />
@@ -195,11 +188,8 @@ export default function Calendar() {
       </div>
 
       {/* Calendar Component */}
-      <TaskCalendar 
-        tasks={deduplicateTasks([...tasks, ...projectEvents])} 
-        onTaskClick={handleTaskClick}
-        onTaskUpdate={handleTaskUpdate}
-        onCreateRecurringTasks={handleCreateRecurringTasks}
+      <CalendarWithVirtualInstances 
+        teamMode={false}
       />
 
       {/* Create Task Dialogs */}

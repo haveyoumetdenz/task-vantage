@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, Check, Clock, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Plus, Check, Clock, MoreHorizontal, Trash2, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,10 +62,13 @@ const SubtaskItem = ({ subtask, onStatusChange, onDelete }: {
           "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
           subtask.status === 'done' 
             ? "bg-green-500 border-green-500 text-white" 
+            : subtask.status === 'in_progress'
+            ? "bg-yellow-500 border-yellow-500 text-white"
             : "border-muted-foreground hover:border-primary"
         )}
       >
         {subtask.status === 'done' && <Check className="w-3 h-3" />}
+        {subtask.status === 'in_progress' && <Play className="w-3 h-3" />}
       </button>
 
       <div className="flex-1 min-w-0">

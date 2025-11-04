@@ -37,6 +37,7 @@ import { useFirebaseUserProfiles } from '@/hooks/useFirebaseUserProfiles'
 import { cn } from '@/lib/utils'
 import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
 import { format } from 'date-fns'
+import { PrioritySelector } from '@/components/forms/PrioritySelector'
 
 const statusConfig = {
   todo: { label: "To Do", color: "bg-blue-500" },
@@ -90,7 +91,7 @@ export default function TaskDetail() {
         status: foundTask.status,
         priority: foundTask.priority,
         due_date: foundTask.dueDate,
-        project_id: foundTask.project_id || 'no-project',
+        project_id: foundTask.projectId || 'no-project',
         assignee_ids: foundTask.assigneeIds || []
       })
     }
@@ -286,23 +287,12 @@ export default function TaskDetail() {
                 <div>
                   <label className="text-sm font-medium">Priority</label>
                   {isEditing ? (
-                    <Select value={editData.priority.toString()} onValueChange={(value) => setEditData({ ...editData, priority: parseInt(value) })}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Priority 1 (Lowest)</SelectItem>
-                        <SelectItem value="2">Priority 2</SelectItem>
-                        <SelectItem value="3">Priority 3</SelectItem>
-                        <SelectItem value="4">Priority 4</SelectItem>
-                        <SelectItem value="5">Priority 5 (Medium)</SelectItem>
-                        <SelectItem value="6">Priority 6</SelectItem>
-                        <SelectItem value="7">Priority 7</SelectItem>
-                        <SelectItem value="8">Priority 8</SelectItem>
-                        <SelectItem value="9">Priority 9</SelectItem>
-                        <SelectItem value="10">Priority 10 (Highest)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="mt-1">
+                      <PrioritySelector
+                        value={editData.priority}
+                        onChange={(priority) => setEditData({ ...editData, priority })}
+                      />
+                    </div>
                   ) : (
                     <p className="mt-1">{priorityData?.label}</p>
                   )}

@@ -11,7 +11,6 @@ import Tasks from "./pages/Tasks";
 import Calendar from "./pages/Calendar";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
-import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
@@ -25,6 +24,11 @@ import NotFound from "./pages/NotFound";
 import FirebaseTest from "./pages/FirebaseTest";
 import ProfileDebug from "./pages/ProfileDebug";
 import UserManagement from "./pages/UserManagement";
+import VirtualInstanceDemo from "./pages/VirtualInstanceDemo";
+import SimpleVirtualInstanceDemo from "./pages/SimpleVirtualInstanceDemo";
+import TeamReports from "./pages/TeamReports";
+import OrganizationReports from "./pages/OrganizationReports";
+import UserTaskReport from "./pages/UserTaskReport";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +50,13 @@ const App = () => (
             
             {/* Protected routes */}
             <Route path="/" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Dashboard />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
               <ProtectedRoute>
                 <AppLayout>
                   <Dashboard />
@@ -87,13 +98,6 @@ const App = () => (
                 </AppLayout>
               </ProtectedRoute>
             } />
-            <Route path="/reports" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Reports />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
             <Route path="/settings" element={
               <ProtectedRoute>
                 <AppLayout>
@@ -108,7 +112,7 @@ const App = () => (
                 </AppLayout>
               </ProtectedRoute>
             } />
-            <Route path="/team" element={
+            <Route path="/team-management" element={
               <ProtectedRoute>
                 <AppLayout>
                   <TeamManagement />
@@ -129,7 +133,41 @@ const App = () => (
                 </AppLayout>
               </ProtectedRoute>
             } />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/virtual-instance-demo" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <VirtualInstanceDemo />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/simple-virtual-demo" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <SimpleVirtualInstanceDemo />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/team-reports" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <TeamReports />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/organization-reports" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <OrganizationReports />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/my-reports" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <UserTaskReport />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

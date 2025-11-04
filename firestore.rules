@@ -1,61 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Teams - Everyone can see company structure
-    match /teams/{teamId} {
-      allow read: if true; // Anyone can see teams
-      allow write: if request.auth != null;
-    }
-    
-    // Profiles - Everyone can see company directory
-    match /profiles/{userId} {
-      allow read: if true; // Anyone can see profiles (company directory)
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Tasks - Simplified for debugging
-    match /tasks/{taskId} {
-      allow read: if request.auth != null; // Any authenticated user can read tasks
-      allow create: if request.auth != null; // Anyone can create tasks
-      allow update, delete: if request.auth != null; // Anyone can modify tasks
-    }
-    
-    // Projects - Simplified for debugging
-    match /projects/{projectId} {
-      allow read: if request.auth != null; // Any authenticated user can read projects
-      allow create: if request.auth != null; // Anyone can create projects
-      allow update, delete: if request.auth != null; // Anyone can modify projects
-    }
-    
-    // Subtasks - Simplified for debugging
-    match /subtasks/{subtaskId} {
-      allow read: if request.auth != null; // Any authenticated user can read subtasks
-      allow create: if request.auth != null; // Anyone can create subtasks
-      allow update, delete: if request.auth != null; // Anyone can modify subtasks
-    }
-    
-    // Meetings - Everyone can see company meetings
-    match /meetings/{meetingId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-    
-    // Activities - Comments and activity logs
-    match /activities/{activityId} {
-      allow read: if request.auth != null; // Any authenticated user can read activities
-      allow create: if request.auth != null; // Any authenticated user can create activities
-      allow update, delete: if request.auth != null && 
-        resource.data.userId == request.auth.uid; // Only the creator can modify
-    }
-    
-    // Notifications - User notifications
-    match /notifications/{notificationId} {
-      allow read: if request.auth != null && 
-        resource.data.userId == request.auth.uid; // Users can only read their own notifications
-      allow create: if request.auth != null; // Any authenticated user can create notifications
-      allow update, delete: if request.auth != null && 
-        resource.data.userId == request.auth.uid; // Users can only modify their own notifications
+    // WARNING: Test-only permissive rules used by the Firestore Emulator.
+    // Do NOT deploy these to production.
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }

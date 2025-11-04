@@ -28,11 +28,9 @@ export const useFirebaseTeamMembers = () => {
       return
     }
 
-    // Create query for team members
+    // Create query for all profiles (including those without teamId)
     const q = query(
       collection(db, 'profiles'),
-      where('teamId', '!=', null),
-      orderBy('teamId'),
       orderBy('createdAt', 'desc')
     )
 

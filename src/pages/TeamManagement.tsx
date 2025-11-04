@@ -10,7 +10,7 @@ import { useFirebaseTeamMembers, TeamMember } from "@/hooks/useFirebaseTeamMembe
 import { useFirebaseTeamManagement } from "@/hooks/useFirebaseTeamManagement";
 import { useFirebaseTeams, Team } from "@/hooks/useFirebaseTeams";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 import { useAuth } from "@/contexts/FirebaseAuthContext";
 import { Users, MoreHorizontal, Shield } from "lucide-react";
@@ -135,6 +135,17 @@ export default function TeamManagement() {
 
   // Group members by team
   const membersByTeam = useMemo(() => {
+    // Debug: Log all team members to see their actual data
+    console.log('Team Management - All team members:', teamMembers);
+    teamMembers.forEach(member => {
+      console.log(`Member ${member.fullName}:`, {
+        status: member.status,
+        isActive: member.isActive,
+        role: member.role,
+        teamId: member.teamId
+      });
+    });
+    
     return teamMembers.reduce((acc, member) => {
       if (!member.teamId) return acc;
       if (!acc[member.teamId]) acc[member.teamId] = [];
@@ -142,6 +153,75 @@ export default function TeamManagement() {
       return acc;
     }, {} as Record<string, TeamMember[]>);
   }, [teamMembers]);
+
+  // Function to fix undefined status fields
+  const fixUndefinedStatus = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to fix status fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+      let fixedCount = 0;
+
+      teamMembers.forEach(member => {
+        const needsStatusFix = member.status === undefined || member.status === null;
+        const needsActiveFix = member.isActive === undefined || member.isActive === null;
+        const isInconsistent = (member.status === 'active' && member.isActive === false) || 
+                              (member.status === 'deactivated' && member.isActive === true) ||
+                              (member.status === 'active' && member.isActive === true && member.deactivatedAt);
+        
+        if (needsStatusFix || needsActiveFix || isInconsistent) {
+          const profileRef = doc(db, 'profiles', member.id);
+          
+          // Determine the correct values based on existing data
+          // If deactivatedAt exists, user should be deactivated
+          const shouldBeDeactivated = member.deactivatedAt || member.isActive === false || member.status === 'deactivated';
+          const correctStatus = shouldBeDeactivated ? 'deactivated' : 'active';
+          const correctIsActive = !shouldBeDeactivated;
+          
+          const updateData: any = {
+            status: correctStatus,
+            isActive: correctIsActive,
+            updatedAt: new Date().toISOString()
+          };
+          
+          // If user should be active, remove deactivatedAt field
+          if (!shouldBeDeactivated && member.deactivatedAt) {
+            updateData.deactivatedAt = null;
+          }
+          
+          batch.update(profileRef, updateData);
+          fixedCount++;
+        }
+      });
+
+      if (fixedCount > 0) {
+        await batch.commit();
+        toast({
+          title: "Success",
+          description: `Fixed ${fixedCount} user status fields`,
+        });
+      } else {
+        toast({
+          title: "Info",
+          description: "No undefined status fields found",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fixing status fields:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fix status fields: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   // Function to create the team structure
   const createTeams = async () => {
@@ -229,22 +309,31 @@ export default function TeamManagement() {
             View your organization structure and team members ({profile?.role})
           </p>
         </div>
-        {teams.length === 0 && (
+        <div className="flex gap-2">
+          {teams.length === 0 && (
+            <Button 
+              onClick={createTeams} 
+              disabled={isCreatingTeams}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isCreatingTeams ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Creating Teams...
+                </>
+              ) : (
+                'Create Team Structure'
+              )}
+            </Button>
+          )}
           <Button 
-            onClick={createTeams} 
-            disabled={isCreatingTeams}
-            className="bg-primary hover:bg-primary/90"
+            onClick={fixUndefinedStatus} 
+            variant="outline"
+            className="border-orange-500 text-orange-500 hover:bg-orange-50"
           >
-            {isCreatingTeams ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Creating Teams...
-              </>
-            ) : (
-              'Create Team Structure'
-            )}
+            Fix Status Fields
           </Button>
-        )}
+        </div>
       </div>
 
       {/* Organization Tree */}
@@ -319,32 +408,26 @@ export default function TeamManagement() {
                                       {member.role || 'Staff'}
                                     </Badge>
                                     <Badge 
-                                      variant={member.status === 'active' ? 'default' : 'destructive'}
+                                      variant={
+                                        // Check status, isActive, and deactivatedAt fields (same logic as User Management)
+                                        (member.status === 'active' || member.status === undefined || member.status === null) && 
+                                        member.isActive !== false && 
+                                        !member.deactivatedAt
+                                          ? 'default' 
+                                          : (member.status === 'deactivated' || member.isActive === false || member.deactivatedAt)
+                                            ? 'destructive' 
+                                            : 'default'
+                                      }
                                       className="text-xs"
                                     >
-                                      {member.status || 'active'}
+                                      {member.isActive === false || member.deactivatedAt ? 'deactivated' : (member.status || 'active')}
                                     </Badge>
+                                    {/* Debug info - remove in production */}
+                                    <span className="text-xs text-gray-400 ml-1">
+                                      (status: {member.status || 'undefined'}, isActive: {member.isActive?.toString() || 'undefined'}, deactivatedAt: {member.deactivatedAt ? 'exists' : 'none'})
+                                    </span>
                                   </div>
                                 </div>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem 
-                                      onClick={() => updateMemberStatus(member.userId, 'active')}
-                                    >
-                                      Activate
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => updateMemberStatus(member.userId, 'deactivated')}
-                                    >
-                                      Deactivate
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
                               </div>
                             ))}
                           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -127,12 +127,12 @@ export const NotificationPreferences = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between border-b border-border pb-6">
         <div>
           <h2 className="text-2xl font-bold">Notification Preferences</h2>
           <p className="text-muted-foreground">
-            Choose how you want to be notified about activities in TaskFlow
+            Choose how you want to be notified about activities in Task Vantage
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -152,14 +152,17 @@ export const NotificationPreferences = () => {
       </div>
 
       {/* Task Notifications */}
-      <Card>
-        <CardHeader>
+      <Card className="border-2 border-border shadow-sm">
+        <CardHeader className="border-b border-border">
           <CardTitle className="flex items-center gap-2">
             {getNotificationIcon('task')}
             Task Notifications
           </CardTitle>
+          <CardDescription>
+            Manage notifications related to your tasks and assignments
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="taskAssigned">Task Assigned</Label>
@@ -225,14 +228,17 @@ export const NotificationPreferences = () => {
       </Card>
 
       {/* Comment Notifications */}
-      <Card>
-        <CardHeader>
+      <Card className="border-2 border-border shadow-sm">
+        <CardHeader className="border-b border-border">
           <CardTitle className="flex items-center gap-2">
             {getNotificationIcon('comment')}
             Comment Notifications
           </CardTitle>
+          <CardDescription>
+            Control notifications for comments and mentions
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="commentAdded">New Comments</Label>
@@ -266,14 +272,17 @@ export const NotificationPreferences = () => {
       </Card>
 
       {/* Project Notifications */}
-      <Card>
-        <CardHeader>
+      <Card className="border-2 border-border shadow-sm">
+        <CardHeader className="border-b border-border">
           <CardTitle className="flex items-center gap-2">
             {getNotificationIcon('task')}
             Project Notifications
           </CardTitle>
+          <CardDescription>
+            Stay updated on project-related activities
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="projectAssigned">Project Assigned</Label>
@@ -307,14 +316,17 @@ export const NotificationPreferences = () => {
       </Card>
 
       {/* Meeting Notifications */}
-      <Card>
-        <CardHeader>
+      <Card className="border-2 border-border shadow-sm">
+        <CardHeader className="border-b border-border">
           <CardTitle className="flex items-center gap-2">
             {getNotificationIcon('meeting')}
             Meeting Notifications
           </CardTitle>
+          <CardDescription>
+            Manage meeting and schedule-related notifications
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="meetingScheduled">Meeting Scheduled</Label>
@@ -348,14 +360,17 @@ export const NotificationPreferences = () => {
       </Card>
 
       {/* System Notifications */}
-      <Card>
-        <CardHeader>
+      <Card className="border-2 border-border shadow-sm">
+        <CardHeader className="border-b border-border">
           <CardTitle className="flex items-center gap-2">
             {getNotificationIcon('system')}
             System Notifications
           </CardTitle>
+          <CardDescription>
+            Important system updates and security alerts
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="systemUpdates">System Updates</Label>
@@ -389,14 +404,17 @@ export const NotificationPreferences = () => {
       </Card>
 
       {/* Notification Channels */}
-      <Card>
-        <CardHeader>
+      <Card className="border-2 border-border shadow-sm">
+        <CardHeader className="border-b border-border">
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notification Channels
           </CardTitle>
+          <CardDescription>
+            Choose how you want to receive notifications
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="emailNotifications">Email Notifications</Label>

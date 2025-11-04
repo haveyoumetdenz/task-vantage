@@ -36,10 +36,27 @@ export default function Projects() {
   const projectsWithCounts = projects.map(project => {
     const projectTasks = allTasks.filter(task => task.projectId === project.id)
     const completedTasks = projectTasks.filter(task => task.status === 'completed')
+    
+    // Calculate real-time progress as fallback
+    const realTimeProgress = projectTasks.length > 0 
+      ? Math.round((completedTasks.length / projectTasks.length) * 100) 
+      : 0
+    
+    // Use real-time progress if database progress seems outdated
+    const displayProgress = (project.progress === 0 && realTimeProgress > 0) 
+      ? realTimeProgress 
+      : project.progress
+    
+    // Determine if project should be marked as completed based on real-time data
+    const shouldBeCompleted = realTimeProgress === 100 && projectTasks.length > 0
+    const displayStatus = shouldBeCompleted ? 'completed' : project.status
+    
     return {
       ...project,
       taskCount: projectTasks.length,
-      completedTaskCount: completedTasks.length
+      completedTaskCount: completedTasks.length,
+      progress: displayProgress,
+      status: displayStatus
     }
   })
 

@@ -42,14 +42,10 @@ const editRecurringTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(['todo', 'in_progress', 'completed', 'cancelled']),
   priority: z.number().min(1).max(10).default(5),
-  start_date: z.date({
-    required_error: 'Start date is required for recurring tasks',
+  due_date: z.date({
+    required_error: 'Due date is required for recurring tasks',
   }),
-  start_time: z.string().min(1, 'Start time is required'),
-  end_date: z.date({
-    required_error: 'End date is required for recurring tasks',
-  }),
-  end_time: z.string().min(1, 'End time is required'),
+  due_time: z.string().min(1, 'Due time is required'),
   project_id: z.string().optional(),
   assignee_ids: z.array(z.string()).optional(),
   recurrence: z.object({
