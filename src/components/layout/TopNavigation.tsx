@@ -12,7 +12,7 @@ import { useFirebaseTeamHierarchyTasks } from "@/hooks/useFirebaseTeamHierarchyT
 import { useFirebaseProjects } from "@/hooks/useFirebaseProjects";
 import { useTaskDeadlineNotifications } from "@/hooks/useTaskDeadlineNotifications";
 import { db } from '@/integrations/firebase/client';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
   DropdownMenu,
@@ -164,31 +164,28 @@ export function TopNavigation() {
 
   const markNotificationAsRead = async (notificationId: string) => {
     try {
-      console.log('🔔 Marking notification as read:', notificationId);
-      await updateDoc(doc(db, 'notifications', notificationId), {
-        read: true
-      });
-      console.log('✅ Notification marked as read');
+      console.log('🔔 Removing notification:', notificationId);
+      await deleteDoc(doc(db, 'notifications', notificationId));
+      console.log('✅ Notification removed');
     } catch (error) {
-      console.error('❌ Error marking notification as read:', error);
+      console.error('❌ Error removing notification:', error);
     }
   };
 
   const markAllNotificationsAsRead = async () => {
     try {
-      console.log('🔔 Marking all notifications as read');
-      const unreadNotifications = notifications.filter(n => !n.read);
+      console.log('🔔 Removing all notifications');
       
-      // Update all unread notifications in parallel
+      // Delete all notifications in parallel
       await Promise.all(
-        unreadNotifications.map(notification => 
-          updateDoc(doc(db, 'notifications', notification.id), { read: true })
+        notifications.map(notification => 
+          deleteDoc(doc(db, 'notifications', notification.id))
         )
       );
       
-      console.log('✅ All notifications marked as read');
+      console.log('✅ All notifications removed');
     } catch (error) {
-      console.error('❌ Error marking all notifications as read:', error);
+      console.error('❌ Error removing all notifications:', error);
     }
   };
 
@@ -348,14 +345,14 @@ export function TopNavigation() {
                       {unreadNotifications.length > 0 && ` • ${unreadNotifications.length} unread notification${unreadNotifications.length !== 1 ? 's' : ''}`}
                     </p>
                   </div>
-                  {unreadNotifications.length > 0 && (
+                  {notifications.length > 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={markAllNotificationsAsRead}
                       className="text-xs"
                     >
-                      Mark all read
+                      Dismiss all
                     </Button>
                   )}
                 </div>
@@ -373,13 +370,8 @@ export function TopNavigation() {
                             ? 'opacity-60 border-l-gray-300' 
                             : 'border-l-green-500 bg-green-50'
                         }`}
-                        onClick={async () => {
-                          // Mark notification as read
-                          if (!notification.read) {
-                            await markNotificationAsRead(notification.id);
-                          }
-                          
-                          // Navigate to the task
+                        onClick={() => {
+                          // Navigate to the task/project
                           if (notification.entityType && notification.entityId) {
                             navigate(`/${notification.entityType}s/${notification.entityId}`);
                           }
