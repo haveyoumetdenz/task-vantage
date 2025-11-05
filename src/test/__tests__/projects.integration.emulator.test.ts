@@ -57,21 +57,36 @@ describe('TGO-COR-01 Create Project (Firestore Emulator)', () => {
       updatedAt: new Date().toISOString()
     })
 
-    // Wait for tasks to be committed
-    await new Promise(resolve => setTimeout(resolve, 200))
+    // Wait for tasks to be committed with longer waits
+    await new Promise(resolve => setTimeout(resolve, 500))
 
-    // Wait a bit more for tasks to be fully committed
-    await new Promise(resolve => setTimeout(resolve, 200))
+    // Verify both tasks exist before querying
+    let task1Exists = false
+    let task2Exists = false
+    let verifyRetries = 0
+    while ((!task1Exists || !task2Exists) && verifyRetries < 30) {
+      const task1Snap = await getDoc(doc(db, 'tasks', task1Ref.id))
+      const task2Snap = await getDoc(doc(db, 'tasks', task2Ref.id))
+      task1Exists = task1Snap.exists()
+      task2Exists = task2Snap.exists()
+      if (task1Exists && task2Exists) break
+      await new Promise(resolve => setTimeout(resolve, 200))
+      verifyRetries++
+    }
 
-    // fetch tasks for calculation
+    if (!task1Exists || !task2Exists) {
+      throw new Error(`Tasks not found after creation: task1=${task1Exists}, task2=${task2Exists}`)
+    }
+
+    // fetch tasks for calculation with more retries
     let tasks1: Task[] = []
     let retries = 0
-    while (retries < 10) {
+    while (retries < 30) {
       const q1 = query(collection(db, 'tasks'), where('projectId', '==', projectId))
       const snap1 = await getDocs(q1)
       tasks1 = snap1.docs.map((d) => ({ id: d.id, ...d.data() } as Task))
       if (tasks1.length === 2) break
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 200))
       retries++
     }
 
@@ -88,10 +103,10 @@ describe('TGO-COR-01 Create Project (Firestore Emulator)', () => {
     // Wait for update to be committed (emulator may have slight delay)
     await new Promise(resolve => setTimeout(resolve, 300))
 
-    // Retry query until both tasks show as completed
+    // Retry query until both tasks show as completed with more retries
     let tasks2: Task[] = []
     let retries2 = 0
-    while (retries2 < 10) {
+    while (retries2 < 30) {
       const q2 = query(collection(db, 'tasks'), where('projectId', '==', projectId))
       const snap2 = await getDocs(q2)
       tasks2 = snap2.docs.map((d) => ({ id: d.id, ...d.data() } as Task))
@@ -99,7 +114,7 @@ describe('TGO-COR-01 Create Project (Firestore Emulator)', () => {
       const completedCount = tasks2.filter(t => t.status === 'completed').length
       if (tasks2.length === 2 && completedCount === 2) break
       
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 200))
       retries2++
     }
 

@@ -14,30 +14,45 @@ export async function createTaskEmu(data: any): Promise<string> {
   }
   // Filter out undefined fields (Firestore rejects undefined values)
   const filtered = Object.fromEntries(Object.entries(toSave).filter(([_, val]) => val !== undefined))
-  const ref = await addDoc(collection(db, 'tasks'), filtered)
   
-  // Wait for document to be committed (emulator may have slight delay)
-  // Verify task exists and is readable with retries
-  let retries = 0
-  const maxRetries = 50 // Increased retries for emulator consistency
-  while (retries < maxRetries) {
-    try {
-      const snap = await getDoc(doc(db, 'tasks', ref.id))
-      if (snap.exists() && snap.data()) {
-        // Task exists and has data - return ID
-        return ref.id
+  try {
+    const ref = await addDoc(collection(db, 'tasks'), filtered)
+    
+    // Wait for document to be committed (emulator may have slight delay)
+    // Use a longer initial wait and then verify
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    // Verify task exists and is readable with retries
+    let retries = 0
+    const maxRetries = 100 // Increased retries significantly for emulator consistency
+    while (retries < maxRetries) {
+      try {
+        const snap = await getDoc(doc(db, 'tasks', ref.id))
+        if (snap.exists() && snap.data() && snap.data().title) {
+          // Task exists, has data, and has required fields - return ID
+          return ref.id
+        }
+      } catch (error: any) {
+        // Log error but continue retrying
+        if (retries === 0) {
+          console.warn(`⚠️ Error reading task ${ref.id} on first attempt:`, error.message)
+        }
       }
-    } catch (error) {
-      // Ignore errors during retry
+      await new Promise(resolve => setTimeout(resolve, 300)) // Longer wait between retries
+      retries++
     }
-    await new Promise(resolve => setTimeout(resolve, 200)) // Longer wait between retries
-    retries++
+    
+    // If we get here, task was created but not readable after many retries
+    // This might indicate an emulator connection issue
+    console.error(`❌ Task ${ref.id} was created but not readable after ${maxRetries} retries`)
+    throw new Error(`Task ${ref.id} was created but not readable in emulator after ${maxRetries} retries. This may indicate an emulator connection issue.`)
+  } catch (error: any) {
+    // If addDoc fails, re-throw the error
+    if (error.message?.includes('Task') && error.message?.includes('created but not readable')) {
+      throw error
+    }
+    throw new Error(`Failed to create task: ${error.message || error}`)
   }
-  
-  // Return the ID anyway - the test should handle retries if needed
-  // But log a warning
-  console.warn(`⚠️ Task ${ref.id} may not be immediately readable in emulator. This is normal for emulator timing.`)
-  return ref.id
 }
 
 export async function getTaskByIdEmu(id: string): Promise<{ exists: boolean; data?: any }> {

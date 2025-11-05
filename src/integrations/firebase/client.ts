@@ -5,9 +5,9 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 
 // Check if we should use emulators
+// In Vite, use import.meta.env (process.env is not available in browser)
 const USE_EMULATOR = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true' || 
-                     import.meta.env.USE_FIREBASE_EMULATOR === 'true' ||
-                     process.env.USE_FIREBASE_EMULATOR === 'true';
+                     import.meta.env.USE_FIREBASE_EMULATOR === 'true';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -38,8 +38,7 @@ if (USE_EMULATOR) {
   try {
     // Connect Firestore Emulator
     const firestoreHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || 
-                          import.meta.env.FIRESTORE_EMULATOR_HOST || 
-                          process.env.FIRESTORE_EMULATOR_HOST ||
+                          import.meta.env.FIRESTORE_EMULATOR_HOST ||
                           '127.0.0.1:8080';
     const [host, port] = firestoreHost.split(':');
     connectFirestoreEmulator(db, host, parseInt(port));
@@ -54,8 +53,7 @@ if (USE_EMULATOR) {
   try {
     // Connect Auth Emulator (if needed)
     const authHost = import.meta.env.VITE_AUTH_EMULATOR_HOST || 
-                     import.meta.env.AUTH_EMULATOR_HOST || 
-                     process.env.AUTH_EMULATOR_HOST ||
+                     import.meta.env.AUTH_EMULATOR_HOST ||
                      '127.0.0.1:9099';
     const [host, port] = authHost.split(':');
     connectAuthEmulator(auth, `http://${host}:${port}`, { disableWarnings: true });
@@ -70,8 +68,7 @@ if (USE_EMULATOR) {
   try {
     // Connect Storage Emulator (if needed)
     const storageHost = import.meta.env.VITE_STORAGE_EMULATOR_HOST || 
-                        import.meta.env.STORAGE_EMULATOR_HOST || 
-                        process.env.STORAGE_EMULATOR_HOST ||
+                        import.meta.env.STORAGE_EMULATOR_HOST ||
                         '127.0.0.1:9199';
     const [host, port] = storageHost.split(':');
     connectStorageEmulator(storage, host, parseInt(port));
