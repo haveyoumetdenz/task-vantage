@@ -278,3 +278,35 @@ export function validateProjectData(data: {
     errors
   }
 }
+
+/**
+ * Sanitizes project data by applying defaults and cleaning values
+ * @param data - Raw project data
+ * @returns Sanitized project data with defaults applied
+ */
+export function sanitizeProjectData(data: {
+  title: string
+  description?: string
+  status?: ProjectStatus
+  progress?: number
+  startDate?: string
+  endDate?: string
+  teamMembers?: string[]
+}): {
+  title: string
+  description?: string
+  status: ProjectStatus
+  progress?: number
+  startDate?: string
+  endDate?: string
+  teamMembers?: string[]
+} {
+  return {
+    ...data,
+    title: data.title?.trim() || '',
+    description: data.description?.trim() || undefined,
+    status: data.status || 'active',
+    progress: data.progress ?? 0,
+    teamMembers: data.teamMembers || [],
+  }
+}

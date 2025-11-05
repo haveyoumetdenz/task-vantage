@@ -31,6 +31,19 @@ import { SubtaskList } from '@/components/tasks/SubtaskList'
 import { ActivityLog } from '@/components/tasks/ActivityLog'
 import { EditRecurringTaskDialog } from '@/components/forms/EditRecurringTaskDialog'
 import { useFirebaseTasks, Task } from '@/hooks/useFirebaseTasks'
+import { Trash2 } from 'lucide-react'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '@/integrations/firebase/client'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useFirebaseTeamHierarchyTasks } from '@/hooks/useFirebaseTeamHierarchyTasks'
 import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
 import { useFirebaseUserProfiles } from '@/hooks/useFirebaseUserProfiles'
@@ -56,7 +69,7 @@ const getPriorityConfig = (priority: number) => {
 export default function TaskDetail() {
   const { taskId } = useParams<{ taskId: string }>()
   const navigate = useNavigate()
-  const { tasks, updateTask } = useFirebaseTasks()
+  const { tasks, updateTask, deleteTask } = useFirebaseTasks()
   const { teamTasks } = useFirebaseTeamHierarchyTasks()
   const { projects } = useFirebaseProjects()
   const { canEditTask, profile } = useFirebaseRBAC()
@@ -70,6 +83,7 @@ export default function TaskDetail() {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState<any>({})
   const [showRecurringEditDialog, setShowRecurringEditDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   
   // Check if user can edit this task
   const userCanEdit = task ? canEditTask(task.userId, profile?.teamId) : false
@@ -83,7 +97,37 @@ export default function TaskDetail() {
       foundTask = teamTasks.find(t => t.id === taskId)
     }
     
-    if (foundTask) {
+    // If still not found, fetch directly from Firestore (make task viewable by everyone)
+    if (!foundTask && taskId) {
+      const fetchTask = async () => {
+        try {
+          const taskDoc = await getDoc(doc(db, 'tasks', taskId))
+          if (taskDoc.exists()) {
+            const taskData = {
+              id: taskDoc.id,
+              ...taskDoc.data(),
+              isRecurring: taskDoc.data().isRecurring === true
+            } as Task
+            setTask(taskData)
+            setEditData({
+              title: taskData.title,
+              description: taskData.description,
+              status: taskData.status,
+              priority: taskData.priority,
+              due_date: taskData.dueDate,
+              project_id: taskData.projectId || 'no-project',
+              assignee_ids: taskData.assigneeIds || []
+            })
+          } else {
+            setTask(null)
+          }
+        } catch (error) {
+          console.error('Error fetching task:', error)
+          setTask(null)
+        }
+      }
+      fetchTask()
+    } else if (foundTask) {
       setTask(foundTask)
       setEditData({
         title: foundTask.title,
@@ -157,6 +201,16 @@ export default function TaskDetail() {
     setIsEditing(false)
   }
 
+  const handleDelete = async () => {
+    if (!task) return
+    
+    const result = await deleteTask(task.id)
+    if (result) {
+      setShowDeleteDialog(false)
+      navigate('/tasks')
+    }
+  }
+
   const statusData = statusConfig[task.status as keyof typeof statusConfig]
   const priorityData = getPriorityConfig(task.priority)
 
@@ -191,18 +245,27 @@ export default function TaskDetail() {
               </Button>
             </>
           ) : userCanEdit ? (
-            <Button variant="outline" onClick={() => {
-              if (task?.isRecurring) {
-                console.log('Opening recurring task edit dialog for task:', task.title)
-                setShowRecurringEditDialog(true)
-              } else {
-                console.log('Opening regular task edit for task:', task?.title)
-                setIsEditing(true)
-              }
-            }}>
-              <Edit3 className="h-4 w-4 mr-2" />
-              {task?.isRecurring ? 'Edit Recurring Task' : 'Edit Task'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => {
+                if (task?.isRecurring) {
+                  console.log('Opening recurring task edit dialog for task:', task.title)
+                  setShowRecurringEditDialog(true)
+                } else {
+                  console.log('Opening regular task edit for task:', task?.title)
+                  setIsEditing(true)
+                }
+              }}>
+                <Edit3 className="h-4 w-4 mr-2" />
+                {task?.isRecurring ? 'Edit Recurring Task' : 'Edit Task'}
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Task
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Edit3 className="h-4 w-4" />
@@ -466,6 +529,24 @@ export default function TaskDetail() {
         onOpenChange={setShowRecurringEditDialog} 
         task={task} 
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the task "{task?.title}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

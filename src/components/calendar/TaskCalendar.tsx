@@ -414,6 +414,12 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {dayTasks.length > 0 ? (
             dayTasks.map(task => {
+              // Calculate deadline info for each task
+              // Handle both dueDate and due_date property names
+              const dueDate = 'dueDate' in task ? task.dueDate : ('due_date' in task ? task.due_date : null)
+              const completedAt = 'completed_at' in task ? task.completed_at : ('completedAt' in task ? task.completedAt : null)
+              const deadlineInfo = dueDate ? getDeadlineInfo(dueDate, task.status || 'todo', completedAt || undefined) : null
+              
               return (
                 <div
                   key={task.id}
@@ -442,7 +448,7 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
                             Recurring
                           </Badge>
                         )}
-                        {deadlineInfo.badge && (
+                        {deadlineInfo?.badge && (
                           <Badge variant={deadlineInfo.badge.variant} className="text-xs">
                             {deadlineInfo.badge.text}
                           </Badge>
@@ -451,9 +457,9 @@ export const TaskCalendar: React.FC<TaskCalendarProps> = ({
                     </div>
                     {task.status === 'completed' ? (
                       <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                    ) : deadlineInfo.status === 'overdue' ? (
+                    ) : deadlineInfo?.status === 'overdue' ? (
                       <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
-                    ) : deadlineInfo.status === 'due_soon' ? (
+                    ) : deadlineInfo?.status === 'due_soon' ? (
                       <Clock className="h-5 w-5 text-yellow-600 flex-shrink-0" />
                     ) : null}
                   </div>

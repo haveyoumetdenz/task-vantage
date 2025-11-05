@@ -1,0 +1,142 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]: Navigation
+        - list [ref=e13]:
+          - listitem [ref=e14]:
+            - link "Dashboard" [ref=e15] [cursor=pointer]:
+              - /url: /
+              - img [ref=e16]
+              - generic [ref=e21]: Dashboard
+          - listitem [ref=e22]:
+            - link "Tasks" [ref=e23] [cursor=pointer]:
+              - /url: /tasks
+              - img [ref=e24]
+              - generic [ref=e27]: Tasks
+          - listitem [ref=e28]:
+            - link "Calendar" [ref=e29] [cursor=pointer]:
+              - /url: /calendar
+              - img [ref=e30]
+              - generic [ref=e32]: Calendar
+          - listitem [ref=e33]:
+            - link "Projects" [ref=e34] [cursor=pointer]:
+              - /url: /projects
+              - img [ref=e35]
+              - generic [ref=e37]: Projects
+          - listitem [ref=e38]:
+            - link "My Reports" [ref=e39] [cursor=pointer]:
+              - /url: /my-reports
+              - img [ref=e40]
+              - generic [ref=e42]: My Reports
+      - generic [ref=e43]:
+        - generic [ref=e44]: Team
+        - list [ref=e46]:
+          - listitem [ref=e47]:
+            - link "Team Management" [ref=e48] [cursor=pointer]:
+              - /url: /team-management
+              - img [ref=e49]
+              - generic [ref=e54]: Team Management
+      - generic [ref=e55]:
+        - generic [ref=e56]: Administration
+        - list [ref=e58]:
+          - listitem [ref=e59]:
+            - link "User Management" [ref=e60] [cursor=pointer]:
+              - /url: /user-management
+              - img [ref=e61]
+              - generic [ref=e73]: User Management
+          - listitem [ref=e74]:
+            - link "Team Reports" [ref=e75] [cursor=pointer]:
+              - /url: /team-reports
+              - img [ref=e76]
+              - generic [ref=e78]: Team Reports
+          - listitem [ref=e79]:
+            - link "Organization Reports" [ref=e80] [cursor=pointer]:
+              - /url: /organization-reports
+              - img [ref=e81]
+              - generic [ref=e83]: Organization Reports
+      - list [ref=e86]:
+        - listitem [ref=e87]:
+          - link "Settings" [ref=e88] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e89]
+            - generic [ref=e92]: Settings
+    - generic [ref=e93]:
+      - banner [ref=e94]:
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - button "Toggle Sidebar" [ref=e97] [cursor=pointer]:
+              - img
+              - generic [ref=e98]: Toggle Sidebar
+            - generic [ref=e106]:
+              - generic [ref=e107]: Taskflow
+              - generic [ref=e108]: Get it done!
+          - generic [ref=e110]:
+            - img [ref=e111]
+            - textbox "Search tasks, projects..." [ref=e114]
+          - generic [ref=e115]:
+            - button "New Task" [ref=e116] [cursor=pointer]:
+              - img
+              - text: New Task
+            - button [ref=e117] [cursor=pointer]:
+              - img
+            - button "D" [ref=e118] [cursor=pointer]:
+              - generic [ref=e120]: D
+      - main [ref=e121]:
+        - generic [ref=e122]:
+          - generic [ref=e123]:
+            - generic [ref=e124]:
+              - button "Back" [ref=e125] [cursor=pointer]:
+                - img
+                - text: Back
+              - generic [ref=e126]:
+                - heading "E2E Test Project" [level=1] [ref=e127]
+                - paragraph
+            - button "Add Task" [ref=e128] [cursor=pointer]:
+              - img
+              - text: Add Task
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - heading "Project Overview" [level=3] [ref=e133]
+                - generic [ref=e134]:
+                  - generic [ref=e135]:
+                    - generic [ref=e136]:
+                      - generic [ref=e137]: "0"
+                      - generic [ref=e138]: Total Tasks
+                    - generic [ref=e139]:
+                      - generic [ref=e140]: "0"
+                      - generic [ref=e141]: Completed
+                    - generic [ref=e142]:
+                      - generic [ref=e143]: "0"
+                      - generic [ref=e144]: In Progress
+                    - generic [ref=e145]:
+                      - generic [ref=e146]: "0"
+                      - generic [ref=e147]: To Do
+                  - generic [ref=e148]:
+                    - generic [ref=e149]:
+                      - generic [ref=e150]: Progress
+                      - generic [ref=e151]: 0%
+                    - progressbar [ref=e152]
+              - generic [ref=e154]:
+                - heading "Tasks (0)" [level=3] [ref=e156]
+                - generic [ref=e158]: No tasks yet. Add your first task to get started!
+            - generic [ref=e160]:
+              - heading "Project Details" [level=3] [ref=e162]
+              - generic [ref=e163]:
+                - generic [ref=e164]:
+                  - generic [ref=e165]: Status
+                  - generic [ref=e166]: active
+                - generic [ref=e167]:
+                  - img [ref=e168]
+                  - generic [ref=e171]: Created Nov 05, 2025
+                - generic [ref=e172]:
+                  - img [ref=e173]
+                  - generic [ref=e176]: Updated Nov 05, 2025
+```

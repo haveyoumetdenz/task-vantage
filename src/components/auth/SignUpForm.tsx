@@ -15,8 +15,9 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/integrations/firebase/client'
 import { fetchSignInMethodsForEmail } from 'firebase/auth'
 import { auth } from '@/integrations/firebase/client'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, EyeOff, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { doc, updateDoc } from 'firebase/firestore'
 
 const signUpSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -34,12 +35,17 @@ const signUpSchema = z.object({
 type SignUpFormData = z.infer<typeof signUpSchema>
 
 export const SignUpForm = () => {
+  const [searchParams] = useSearchParams()
+  const invitationToken = searchParams.get('invitation')
+  
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const [emailExists, setEmailExists] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isLoadingInvitation, setIsLoadingInvitation] = useState(!!invitationToken)
+  const [invitationData, setInvitationData] = useState<any>(null)
   const { teams, loading: teamsLoading } = useFirebaseTeams()
   
   // Debug teams loading
@@ -63,6 +69,81 @@ export const SignUpForm = () => {
     },
   })
 
+  // Load invitation data if token is present
+  useEffect(() => {
+    if (invitationToken) {
+      loadInvitation(invitationToken)
+    }
+  }, [invitationToken])
+
+  const loadInvitation = async (token: string) => {
+    try {
+      const invitationsRef = collection(db, 'invitations')
+      const invitationQuery = query(invitationsRef, where('invitationToken', '==', token))
+      const snapshot = await getDocs(invitationQuery)
+
+      if (snapshot.empty) {
+        setError('Invalid or expired invitation link. Please contact your administrator.')
+        setIsLoadingInvitation(false)
+        return
+      }
+
+      const invitation = snapshot.docs[0].data()
+      
+      // Check if invitation is expired
+      if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
+        setError('This invitation has expired. Please contact your administrator for a new invitation.')
+        setIsLoadingInvitation(false)
+        return
+      }
+
+      // Check if invitation is already used
+      if (invitation.status === 'accepted') {
+        setError('This invitation has already been used. Please sign in instead.')
+        setIsLoadingInvitation(false)
+        return
+      }
+
+      // Check if user already has a password set in Firebase Auth
+      // If they do, they should sign in instead (skip activation/signup)
+      try {
+        const authMethods = await fetchSignInMethodsForEmail(auth, invitation.email?.toLowerCase() || '')
+        if (authMethods.length > 0) {
+          // User already has password set - redirect to login
+          toast({
+            title: 'Account Already Exists',
+            description: 'You already have a password set. Please sign in instead.',
+          })
+          navigate('/login')
+          return
+        }
+      } catch (authError: any) {
+        // If check fails, continue with signup (user might not exist yet)
+        console.log('Could not check if user exists in Auth:', authError.message)
+      }
+
+      // Pre-fill form with invitation data
+      const fullName = invitation.fullName || ''
+      const nameParts = fullName.split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      form.setValue('email', invitation.email || '')
+      form.setValue('firstName', firstName)
+      form.setValue('lastName', lastName)
+      form.setValue('role', invitation.role || 'Staff')
+      form.setValue('teamId', invitation.teamId || '')
+
+      // Disable email, role, and team fields since they're set by invitation
+      setInvitationData(invitation)
+      setIsLoadingInvitation(false)
+    } catch (error: any) {
+      console.error('Error loading invitation:', error)
+      setError('Failed to load invitation. Please try again.')
+      setIsLoadingInvitation(false)
+    }
+  }
+
   // Check if email exists in both Firestore and Firebase Auth
   const checkEmailExists = async (email: string) => {
     if (!email || !email.includes('@')) {
@@ -72,14 +153,23 @@ export const SignUpForm = () => {
 
     setIsCheckingEmail(true)
     try {
-      // Check both Firestore profiles and Firebase Authentication
-      const [profilesQuery, authMethods] = await Promise.all([
-        getDocs(query(collection(db, 'profiles'), where('email', '==', email))),
-        fetchSignInMethodsForEmail(auth, email)
-      ])
-      
+      // Check Firestore profiles first
+      const profilesQuery = await getDocs(query(collection(db, 'profiles'), where('email', '==', email)))
       const existsInProfiles = !profilesQuery.empty
-      const existsInAuth = authMethods.length > 0
+      
+      let existsInAuth = false
+      try {
+        // Try to check if email exists in Firebase Auth
+        // This might fail with 400 if there are API issues, so handle gracefully
+        const authMethods = await fetchSignInMethodsForEmail(auth, email)
+        existsInAuth = authMethods.length > 0
+      } catch (authError: any) {
+        // If auth check fails (e.g., 400 error), don't fail the entire check
+        // Just check profiles - if profile exists, assume email exists
+        console.warn('Could not check Firebase Auth for email (may be API issue):', authError.message)
+        // If profile exists, assume email exists in Auth too
+        existsInAuth = existsInProfiles
+      }
       
       // Email exists if it's in either Firestore or Firebase Auth
       const emailExists = existsInProfiles || existsInAuth
@@ -93,6 +183,7 @@ export const SignUpForm = () => {
       })
     } catch (error) {
       console.error('Error checking email:', error)
+      // Don't set emailExists to false on error - let user try
       setEmailExists(null)
     } finally {
       setIsCheckingEmail(false)
@@ -115,13 +206,6 @@ export const SignUpForm = () => {
     setIsLoading(true)
     setError(null)
 
-    // Check if email already exists before proceeding
-    if (emailExists) {
-      setError('An account with this email already exists. Please use a different email or sign in.')
-      setIsLoading(false)
-      return
-    }
-
     // Check if teams are available
     if (teams.length === 0) {
       setError('No teams are available. Please contact your administrator to set up teams.')
@@ -130,6 +214,46 @@ export const SignUpForm = () => {
     }
 
     try {
+      // Check if user exists in Firebase Auth but not in profiles
+      // This can happen if user was created via password reset email but hasn't completed signup
+      let userExistsInAuth = false
+      let userExistsInProfiles = false
+      
+      try {
+        const [profilesQuery, authMethods] = await Promise.all([
+          getDocs(query(collection(db, 'profiles'), where('email', '==', data.email.toLowerCase()))),
+          fetchSignInMethodsForEmail(auth, data.email.toLowerCase())
+        ])
+        
+        userExistsInProfiles = !profilesQuery.empty
+        userExistsInAuth = authMethods.length > 0
+      } catch (checkError) {
+        console.error('Error checking email:', checkError)
+      }
+
+      // If user exists in Auth but not in profiles, they need to complete profile setup
+      // But Firebase signup will fail with email-already-in-use, so we need to handle this differently
+      if (userExistsInAuth && !userExistsInProfiles) {
+        // User was created via password reset but hasn't completed profile
+        // Try to sign in with password they just set, then create profile
+        setError('This email is already registered in Firebase Auth. Please sign in with your password, or if you just set your password, try signing in instead.')
+        setIsLoading(false)
+        return
+      }
+
+      // If user exists in both Auth and profiles, redirect to login
+      if (userExistsInAuth && userExistsInProfiles) {
+        setError('This email is already registered. Please sign in instead.')
+        setIsLoading(false)
+        return
+      }
+
+      // If email exists check showed it exists, but not in Auth, double-check
+      if (emailExists && !userExistsInAuth) {
+        // Might be a stale check, try signup anyway
+        console.log('Email exists check showed exists, but not in Auth - proceeding with signup')
+      }
+
       const { error } = await signUp(
         data.email, 
         data.password, 
@@ -142,7 +266,8 @@ export const SignUpForm = () => {
       if (error) {
         // Handle specific Firebase Auth errors
         if (error.code === 'auth/email-already-in-use') {
-          setError('This email is already registered. Please use a different email or try signing in.')
+          // User exists in Firebase Auth - suggest they sign in or reset password
+          setError('This email is already registered. If you were invited, please sign in with your password. If you forgot your password, use the "Forgot Password" link.')
         } else if (error.code === 'auth/weak-password') {
           setError('Password is too weak. Please choose a stronger password.')
         } else if (error.code === 'auth/invalid-email') {
@@ -151,6 +276,27 @@ export const SignUpForm = () => {
           setError(error.message || 'An error occurred during sign up.')
         }
       } else {
+        // Mark invitation as accepted if it exists
+        if (invitationToken && invitationData) {
+          try {
+            const invitationsRef = collection(db, 'invitations')
+            const invitationQuery = query(invitationsRef, where('invitationToken', '==', invitationToken))
+            const snapshot = await getDocs(invitationQuery)
+            
+            if (!snapshot.empty) {
+              const invitationDoc = snapshot.docs[0]
+              await updateDoc(doc(db, 'invitations', invitationDoc.id), {
+                status: 'accepted',
+                acceptedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              })
+            }
+          } catch (inviteError) {
+            console.error('Error updating invitation:', inviteError)
+            // Don't fail the signup if invitation update fails
+          }
+        }
+
         toast({
           title: "Account Created",
           description: "Your account has been created successfully!",
@@ -175,13 +321,47 @@ export const SignUpForm = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+          {isLoadingInvitation ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span>Loading invitation...</span>
+              </div>
+            </div>
+          ) : (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                {invitationData && (
+                  <Alert className="bg-blue-50 border-blue-200">
+                    <AlertDescription className="text-blue-800">
+                      You've been invited by {invitationData.invitedByName || 'HR'}. 
+                      Your email, role, and team have been pre-filled.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription className="flex flex-col gap-2">
+                      <span>{error}</span>
+                      {(error.includes('already registered') || error.includes('already in use')) && (
+                        <div className="mt-2 flex flex-col gap-1">
+                          <Link 
+                            to="/login" 
+                            className="text-sm underline hover:no-underline font-medium"
+                          >
+                            → Sign in instead
+                          </Link>
+                          <Link 
+                            to="/forgot-password" 
+                            className="text-sm underline hover:no-underline font-medium"
+                          >
+                            → Reset your password
+                          </Link>
+                        </div>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
@@ -233,7 +413,7 @@ export const SignUpForm = () => {
                           type="email"
                           placeholder="Enter your email"
                           {...field}
-                          disabled={isLoading}
+                          disabled={isLoading || !!invitationData}
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                           {isCheckingEmail ? (
@@ -246,12 +426,22 @@ export const SignUpForm = () => {
                         </div>
                       </div>
                     </FormControl>
-                    {emailExists === true && (
-                      <p className="text-sm text-destructive">
-                        An account with this email already exists
+                    {invitationData && (
+                      <p className="text-sm text-muted-foreground">
+                        Email set by invitation
                       </p>
                     )}
-                    {emailExists === false && (
+                    {emailExists === true && !invitationData && (
+                      <p className="text-sm text-destructive">
+                        An account with this email already exists. Please sign in instead.
+                      </p>
+                    )}
+                    {emailExists === true && invitationData && (
+                      <p className="text-sm text-amber-600">
+                        Email already registered. If you were invited, please sign in with your password.
+                      </p>
+                    )}
+                    {emailExists === false && !invitationData && (
                       <p className="text-sm text-green-600">
                         Email is available
                       </p>
@@ -337,7 +527,7 @@ export const SignUpForm = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Team</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading || teamsLoading}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading || teamsLoading || !!invitationData}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={teamsLoading ? "Loading teams..." : "Select your team"} />
@@ -361,6 +551,11 @@ export const SignUpForm = () => {
                         )}
                       </SelectContent>
                     </Select>
+                    {invitationData && (
+                      <p className="text-sm text-muted-foreground">
+                        Team set by invitation
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -372,7 +567,7 @@ export const SignUpForm = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading || !!invitationData}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select your role" />
@@ -386,6 +581,11 @@ export const SignUpForm = () => {
                         <SelectItem value="Senior Management">Senior Management</SelectItem>
                       </SelectContent>
                     </Select>
+                    {invitationData && (
+                      <p className="text-sm text-muted-foreground">
+                        Role set by invitation
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -418,6 +618,7 @@ export const SignUpForm = () => {
               </div>
             </form>
           </Form>
+          )}
         </CardContent>
       </Card>
     </div>

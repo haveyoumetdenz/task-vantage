@@ -11,9 +11,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { useFirebaseTeamMembers } from '@/hooks/useFirebaseTeamMembers'
 import { format } from 'date-fns'
-import { Send, MessageSquare, User, AtSign, Bell, ChevronDown } from 'lucide-react'
+import { Send, MessageSquare, User, AtSign, Bell, ChevronDown, Edit3, Trash2 } from 'lucide-react'
 import { db } from '@/integrations/firebase/client'
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 
 // Function to send mention notifications
 const sendMentionNotifications = async (mentionedUserIds: string[], activity: any) => {
@@ -74,6 +74,8 @@ export const ActivityLog = ({ entityType, entityId, className }: ActivityLogProp
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [newComment, setNewComment] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
+  const [editComment, setEditComment] = useState('')
   
   // @ auto-complete state
   const [showMentions, setShowMentions] = useState(false)
@@ -214,10 +216,17 @@ export const ActivityLog = ({ entityType, entityId, className }: ActivityLogProp
       console.log('✅ Activity saved with ID:', savedActivityRef.id)
       setNewComment('')
       
-      // Send notification to mentioned users
+      // Send notification to mentioned users (excluding the current user who made the comment)
       if (mentions.length > 0) {
-        console.log('🔧 Sending notifications to:', mentions)
-        await sendMentionNotifications(mentions, { ...activityData, id: savedActivityRef.id })
+        // Filter out the current user - you shouldn't get a notification for mentioning yourself
+        const mentionedOthers = mentions.filter(mentionedUserId => mentionedUserId !== user.uid)
+        
+        if (mentionedOthers.length > 0) {
+          console.log('🔧 Sending notifications to:', mentionedOthers, '(excluding current user:', user.uid, ')')
+          await sendMentionNotifications(mentionedOthers, { ...activityData, id: savedActivityRef.id })
+        } else {
+          console.log('ℹ️  No other users to notify (only self-mention or all mentions were self)')
+        }
       }
     } catch (error) {
       console.error('❌ Error saving activity to Firebase:', error)
@@ -380,55 +389,136 @@ export const ActivityLog = ({ entityType, entityId, className }: ActivityLogProp
         </Card>
 
         {/* Activity List */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {activities.length === 0 ? (
             <div className="text-sm text-muted-foreground text-center py-8">
               No activity yet. Be the first to comment!
             </div>
           ) : (
-            activities.map((activity, index) => (
-              <div key={activity.id} className="flex gap-3">
-                <div className="flex-shrink-0">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={activity.userAvatar} />
-                    <AvatarFallback>
-                      {activity.userName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">{activity.userName}</span>
-                    <div className={`flex items-center gap-1 ${getActivityColor(activity.type)}`}>
-                      {getActivityIcon(activity.type)}
+            activities.map((activity, index) => {
+              const isOwnComment = activity.userId === user?.uid
+              const isEditing = editingActivityId === activity.id
+              
+              return (
+                <Card key={activity.id} className="p-4">
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={activity.userAvatar} />
+                        <AvatarFallback>
+                          {activity.userName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {format(activity.timestamp, 'MMM d, h:mm a')}
-                    </span>
-                    {activity.mentions && activity.mentions.length > 0 && (
-                      <Badge variant="outline" className="text-xs">
-                        <AtSign className="h-3 w-3 mr-1" />
-                        {activity.mentions.length} mention{activity.mentions.length !== 1 ? 's' : ''}
-                      </Badge>
-                    )}
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{activity.userName}</span>
+                          <div className={`flex items-center gap-1 ${getActivityColor(activity.type)}`}>
+                            {getActivityIcon(activity.type)}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {format(activity.timestamp, 'MMM d, h:mm a')}
+                          </span>
+                          {activity.mentions && activity.mentions.length > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              <AtSign className="h-3 w-3 mr-1" />
+                              {activity.mentions.length} mention{activity.mentions.length !== 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {isOwnComment && activity.type === 'comment' && !isEditing && (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => {
+                                setEditingActivityId(activity.id)
+                                setEditComment(activity.content)
+                              }}
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                              onClick={async () => {
+                                if (confirm('Are you sure you want to delete this comment?')) {
+                                  try {
+                                    await deleteDoc(doc(db, 'activities', activity.id))
+                                  } catch (error) {
+                                    console.error('Error deleting comment:', error)
+                                  }
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editComment}
+                            onChange={(e) => setEditComment(e.target.value)}
+                            className="min-h-[80px]"
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await updateDoc(doc(db, 'activities', activity.id), {
+                                    content: editComment,
+                                    updatedAt: serverTimestamp()
+                                  })
+                                  setEditingActivityId(null)
+                                  setEditComment('')
+                                } catch (error) {
+                                  console.error('Error updating comment:', error)
+                                }
+                              }}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingActivityId(null)
+                                setEditComment('')
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm">
+                          {activity.type === 'comment' ? (
+                            <div 
+                              dangerouslySetInnerHTML={{ 
+                                __html: formatComment(activity.content) 
+                              }}
+                              className="prose prose-sm max-w-none whitespace-pre-wrap break-words"
+                            />
+                          ) : (
+                            <span className="text-muted-foreground whitespace-pre-wrap break-words">{activity.content}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="text-sm">
-                    {activity.type === 'comment' ? (
-                      <div 
-                        dangerouslySetInnerHTML={{ 
-                          __html: formatComment(activity.content) 
-                        }}
-                        className="prose prose-sm max-w-none"
-                      />
-                    ) : (
-                      <span className="text-muted-foreground">{activity.content}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
+                </Card>
+              )
+            })
           )}
         </div>
       </div>

@@ -14,7 +14,18 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
-    "test:emu": "vitest run src/test/__tests__/*.integration.emulator.test.ts"
+    "test:emu": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 vitest run src/test/__tests__/*.integration.emulator.test.ts",
+    "test:e2e": "playwright test --reporter=list",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "emulator:start": "firebase emulators:start --only firestore --project task-vantage-test",
+    "emulator:ui": "firebase emulators:start --only firestore,ui --project demo-task-vantage",
+    "emulator:stop": "./scripts/emulator-manager.sh stop",
+    "emulator:status": "./scripts/emulator-manager.sh status",
+    "emulator:restart": "./scripts/emulator-manager.sh restart",
+    "test:emu:fresh": "./scripts/test-with-emulator.sh"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -80,6 +91,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -95,6 +107,7 @@
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "firebase-tools": "^14.23.0",
     "globals": "^15.15.0",
     "happy-dom": "^20.0.8",
     "jsdom": "^27.0.1",

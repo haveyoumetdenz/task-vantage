@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, UserX, UserCheck, Trash2, MoreHorizontal, Shield, Users } from 'lucide-react'
+import { Search, UserX, UserCheck, Trash2, MoreHorizontal, Shield, Users, UserPlus } from 'lucide-react'
 import { format } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { AccountManagementDialog } from '@/components/admin/AccountManagementDialog'
+import { InviteUserDialog } from '@/components/admin/InviteUserDialog'
 import { useFirebaseProfile } from '@/hooks/useFirebaseProfile'
 import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
 import { db } from '@/integrations/firebase/client'
@@ -45,6 +46,7 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showAccountDialog, setShowAccountDialog] = useState(false)
+  const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [loading, setLoading] = useState(true)
   
   const { profile } = useFirebaseProfile()
@@ -244,6 +246,10 @@ export default function UserManagement() {
             Manage user accounts, roles, and permissions
           </p>
         </div>
+        <Button onClick={() => setShowInviteDialog(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Invite User
+        </Button>
       </div>
 
       {/* Search and Filters */}
@@ -340,6 +346,12 @@ export default function UserManagement() {
           targetUserEmail={selectedUser.email}
         />
       )}
+
+      {/* Invite User Dialog */}
+      <InviteUserDialog
+        open={showInviteDialog}
+        onOpenChange={setShowInviteDialog}
+      />
     </div>
   )
 }

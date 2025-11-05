@@ -1,0 +1,571 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]: Navigation
+        - list [ref=e13]:
+          - listitem [ref=e14]:
+            - link "Dashboard" [ref=e15] [cursor=pointer]:
+              - /url: /
+              - img [ref=e16]
+              - generic [ref=e21]: Dashboard
+          - listitem [ref=e22]:
+            - link "Tasks" [ref=e23] [cursor=pointer]:
+              - /url: /tasks
+              - img [ref=e24]
+              - generic [ref=e27]: Tasks
+          - listitem [ref=e28]:
+            - link "Calendar" [ref=e29] [cursor=pointer]:
+              - /url: /calendar
+              - img [ref=e30]
+              - generic [ref=e32]: Calendar
+          - listitem [ref=e33]:
+            - link "Projects" [ref=e34] [cursor=pointer]:
+              - /url: /projects
+              - img [ref=e35]
+              - generic [ref=e37]: Projects
+          - listitem [ref=e38]:
+            - link "My Reports" [ref=e39] [cursor=pointer]:
+              - /url: /my-reports
+              - img [ref=e40]
+              - generic [ref=e42]: My Reports
+      - generic [ref=e43]:
+        - generic [ref=e44]: Team
+        - list [ref=e46]:
+          - listitem [ref=e47]:
+            - link "Team Management" [ref=e48] [cursor=pointer]:
+              - /url: /team-management
+              - img [ref=e49]
+              - generic [ref=e54]: Team Management
+      - list [ref=e57]:
+        - listitem [ref=e58]:
+          - link "Settings" [ref=e59] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e60]
+            - generic [ref=e63]: Settings
+    - generic [ref=e64]:
+      - banner [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - button "Toggle Sidebar" [ref=e68] [cursor=pointer]:
+              - img
+              - generic [ref=e69]: Toggle Sidebar
+            - generic [ref=e77]:
+              - generic [ref=e78]: Taskflow
+              - generic [ref=e79]: Get it done!
+          - generic [ref=e81]:
+            - img [ref=e82]
+            - textbox "Search tasks, projects..." [ref=e85]
+          - generic [ref=e86]:
+            - button "New Task" [ref=e87] [cursor=pointer]:
+              - img
+              - text: New Task
+            - button [ref=e88] [cursor=pointer]:
+              - img
+            - button "D" [ref=e89] [cursor=pointer]:
+              - generic [ref=e91]: D
+      - main [ref=e92]:
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - heading "Tasks" [level=1] [ref=e96]
+              - paragraph [ref=e97]: Manage and track your tasks (Staff)
+            - generic [ref=e98]:
+              - button "New Task" [ref=e99] [cursor=pointer]:
+                - img
+                - text: New Task
+              - button "Recurring Task" [ref=e100] [cursor=pointer]:
+                - img
+                - text: Recurring Task
+          - generic [ref=e101]:
+            - generic [ref=e102]:
+              - img [ref=e103]
+              - textbox "Search tasks..." [ref=e106]
+            - combobox [ref=e107] [cursor=pointer]:
+              - generic: All Status
+              - img [ref=e108]
+            - combobox [ref=e110] [cursor=pointer]:
+              - generic: All Priority
+              - img [ref=e111]
+          - generic [ref=e113]:
+            - generic [ref=e116]:
+              - generic [ref=e117]:
+                - paragraph [ref=e118]: Total Tasks
+                - paragraph [ref=e119]: "19"
+              - img [ref=e121]
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - paragraph [ref=e126]: Completed
+                - paragraph [ref=e127]: "5"
+              - img [ref=e129]
+            - generic [ref=e134]:
+              - generic [ref=e135]:
+                - paragraph [ref=e136]: In Progress
+                - paragraph [ref=e137]: "2"
+              - img [ref=e139]
+            - generic [ref=e144]:
+              - generic [ref=e145]:
+                - paragraph [ref=e146]: Overdue
+                - paragraph [ref=e147]: "9"
+              - img [ref=e149]
+          - generic [ref=e151]:
+            - tablist [ref=e152]:
+              - tab "My Tasks" [selected] [ref=e153] [cursor=pointer]
+              - tab "Team Tasks" [ref=e154] [cursor=pointer]
+            - tabpanel "My Tasks" [ref=e155]:
+              - generic [ref=e157]:
+                - button "List" [ref=e158] [cursor=pointer]:
+                  - img
+                  - text: List
+                - button "Kanban" [ref=e159] [cursor=pointer]:
+                  - img
+                  - text: Kanban
+              - generic [ref=e160]:
+                - generic [ref=e161] [cursor=pointer]:
+                  - generic [ref=e163]:
+                    - generic [ref=e164]:
+                      - heading "due date" [level=3] [ref=e165]
+                      - paragraph
+                    - button [ref=e166]:
+                      - img
+                  - generic [ref=e167]:
+                    - generic [ref=e168]:
+                      - generic [ref=e169]:
+                        - generic [ref=e170]:
+                          - img [ref=e171]
+                          - generic [ref=e174]: In Progress
+                        - generic [ref=e175]:
+                          - img [ref=e176]
+                          - generic [ref=e178]: Priority 5
+                      - generic [ref=e179]:
+                        - img [ref=e180]
+                        - generic [ref=e182]: Nov 05, 8:00 AM
+                    - generic [ref=e186]: D
+                    - generic [ref=e187]:
+                      - generic [ref=e189]: in progress
+                      - generic [ref=e190]: Nov 04, 2025
+                - generic [ref=e191] [cursor=pointer]:
+                  - generic [ref=e193]:
+                    - generic [ref=e194]:
+                      - heading "hihih" [level=3] [ref=e195]
+                      - paragraph
+                    - button [ref=e196]:
+                      - img
+                  - generic [ref=e197]:
+                    - generic [ref=e198]:
+                      - generic [ref=e199]:
+                        - generic [ref=e200]:
+                          - img [ref=e201]
+                          - generic [ref=e204]: Completed
+                        - generic [ref=e205]:
+                          - img [ref=e206]
+                          - generic [ref=e208]: Priority 5
+                      - generic [ref=e209]:
+                        - img [ref=e210]
+                        - generic [ref=e212]: Nov 05, 8:00 AM
+                    - generic [ref=e216]: D
+                    - generic [ref=e217]:
+                      - generic [ref=e219]: completed
+                      - generic [ref=e220]: Nov 04, 2025
+                - generic [ref=e221] [cursor=pointer]:
+                  - generic [ref=e223]:
+                    - generic [ref=e224]:
+                      - heading "hiihi" [level=3] [ref=e225]
+                      - paragraph
+                    - button [ref=e226]:
+                      - img
+                  - generic [ref=e227]:
+                    - generic [ref=e228]:
+                      - generic [ref=e229]:
+                        - generic [ref=e230]:
+                          - img [ref=e231]
+                          - generic [ref=e233]: Cancelled
+                        - generic [ref=e234]:
+                          - img [ref=e235]
+                          - generic [ref=e237]: Priority 5
+                      - generic [ref=e238]:
+                        - img [ref=e239]
+                        - generic [ref=e241]: Nov 05, 8:00 AM
+                    - generic [ref=e243]:
+                      - generic [ref=e245]: D
+                      - generic [ref=e247]: D
+                      - generic [ref=e249]: S
+                    - generic [ref=e250]:
+                      - generic [ref=e252]: cancelled
+                      - generic [ref=e253]: Nov 04, 2025
+                - generic [ref=e254] [cursor=pointer]:
+                  - generic [ref=e256]:
+                    - generic [ref=e257]:
+                      - heading "test test cases" [level=3] [ref=e258]
+                      - paragraph
+                    - button [ref=e259]:
+                      - img
+                  - generic [ref=e260]:
+                    - generic [ref=e261]:
+                      - generic [ref=e262]:
+                        - generic [ref=e263]:
+                          - img [ref=e264]
+                          - generic [ref=e267]: Completed
+                        - generic [ref=e268]:
+                          - img [ref=e269]
+                          - generic [ref=e271]: Priority 5
+                      - generic [ref=e272]:
+                        - img [ref=e273]
+                        - generic [ref=e275]: Nov 05, 11:59 PM
+                    - generic [ref=e279]: D
+                    - generic [ref=e280]:
+                      - generic [ref=e282]: completed
+                      - generic [ref=e283]: Oct 19, 2025
+                - generic [ref=e284] [cursor=pointer]:
+                  - generic [ref=e286]:
+                    - generic [ref=e287]:
+                      - heading "a" [level=3] [ref=e288]
+                      - paragraph [ref=e289]: a
+                    - button [ref=e290]:
+                      - img
+                  - generic [ref=e291]:
+                    - generic [ref=e293]:
+                      - generic [ref=e294]:
+                        - img [ref=e295]
+                        - generic [ref=e298]: To Do
+                      - generic [ref=e299]:
+                        - img [ref=e300]
+                        - generic [ref=e302]: Priority 5
+                    - generic [ref=e306]: D
+                    - generic [ref=e307]:
+                      - generic [ref=e309]: todo
+                      - generic [ref=e310]: Oct 19, 2025
+                - generic [ref=e311] [cursor=pointer]:
+                  - generic [ref=e313]:
+                    - generic [ref=e314]:
+                      - heading "lau yi meng" [level=3] [ref=e315]
+                      - paragraph
+                    - button [ref=e316]:
+                      - img
+                  - generic [ref=e317]:
+                    - generic [ref=e318]:
+                      - generic [ref=e319]:
+                        - generic [ref=e320]:
+                          - img [ref=e321]
+                          - generic [ref=e324]: To Do
+                        - generic [ref=e325]:
+                          - img [ref=e326]
+                          - generic [ref=e328]: Priority 5
+                        - generic [ref=e329]:
+                          - img [ref=e330]
+                          - generic [ref=e335]: Recurring
+                      - generic [ref=e336]:
+                        - img [ref=e337]
+                        - generic [ref=e339]: Oct 15, 9:00 AM
+                    - generic [ref=e343]: D
+                    - generic [ref=e344]:
+                      - generic [ref=e346]: todo
+                      - generic [ref=e347]: Oct 15, 2025
+                - generic [ref=e348] [cursor=pointer]:
+                  - generic [ref=e350]:
+                    - generic [ref=e351]:
+                      - heading "test assign notification" [level=3] [ref=e352]
+                      - paragraph
+                    - button [ref=e353]:
+                      - img
+                  - generic [ref=e354]:
+                    - generic [ref=e356]:
+                      - generic [ref=e357]:
+                        - img [ref=e358]
+                        - generic [ref=e361]: To Do
+                      - generic [ref=e362]:
+                        - img [ref=e363]
+                        - generic [ref=e365]: Priority 5
+                    - generic [ref=e367]:
+                      - generic [ref=e369]: S
+                      - generic [ref=e371]: D
+                      - generic [ref=e373]: E
+                    - generic [ref=e374]:
+                      - generic [ref=e376]: todo
+                      - generic [ref=e377]: Oct 15, 2025
+                - generic [ref=e378] [cursor=pointer]:
+                  - generic [ref=e380]:
+                    - generic [ref=e381]:
+                      - heading "tes notif" [level=3] [ref=e382]
+                      - paragraph
+                    - button [ref=e383]:
+                      - img
+                  - generic [ref=e384]:
+                    - generic [ref=e385]:
+                      - generic [ref=e386]:
+                        - generic [ref=e387]:
+                          - img [ref=e388]
+                          - generic [ref=e391]: To Do
+                        - generic [ref=e392]:
+                          - img [ref=e393]
+                          - generic [ref=e395]: Priority 5
+                      - generic [ref=e396]:
+                        - img [ref=e397]
+                        - generic [ref=e399]: Oct 15, 8:00 AM
+                    - generic [ref=e403]: D
+                    - generic [ref=e404]:
+                      - generic [ref=e406]: todo
+                      - generic [ref=e407]: Oct 14, 2025
+                - generic [ref=e408] [cursor=pointer]:
+                  - generic [ref=e410]:
+                    - generic [ref=e411]:
+                      - heading "halohalooo" [level=3] [ref=e412]
+                      - paragraph
+                    - button [ref=e413]:
+                      - img
+                  - generic [ref=e414]:
+                    - generic [ref=e416]:
+                      - generic [ref=e417]:
+                        - img [ref=e418]
+                        - generic [ref=e421]: To Do
+                      - generic [ref=e422]:
+                        - img [ref=e423]
+                        - generic [ref=e425]: Priority 5
+                    - generic [ref=e429]: D
+                    - generic [ref=e430]:
+                      - generic [ref=e432]: todo
+                      - generic [ref=e433]: Oct 14, 2025
+                - generic [ref=e434] [cursor=pointer]:
+                  - generic [ref=e436]:
+                    - generic [ref=e437]:
+                      - heading "hi" [level=3] [ref=e438]
+                      - paragraph [ref=e439]: a
+                    - button [ref=e440]:
+                      - img
+                  - generic [ref=e441]:
+                    - generic [ref=e442]:
+                      - generic [ref=e443]:
+                        - generic [ref=e444]:
+                          - img [ref=e445]
+                          - generic [ref=e448]: To Do
+                        - generic [ref=e449]:
+                          - img [ref=e450]
+                          - generic [ref=e452]: Priority 5
+                      - generic [ref=e453]:
+                        - img [ref=e454]
+                        - generic [ref=e456]: Oct 14, 11:59 PM
+                    - generic [ref=e460]: D
+                    - generic [ref=e461]:
+                      - generic [ref=e463]: todo
+                      - generic [ref=e464]: Oct 14, 2025
+                - generic [ref=e465] [cursor=pointer]:
+                  - generic [ref=e467]:
+                    - generic [ref=e468]:
+                      - heading "HELLO" [level=3] [ref=e469]
+                      - paragraph
+                    - button [ref=e470]:
+                      - img
+                  - generic [ref=e471]:
+                    - generic [ref=e472]:
+                      - generic [ref=e473]:
+                        - generic [ref=e474]:
+                          - img [ref=e475]
+                          - generic [ref=e478]: To Do
+                        - generic [ref=e479]:
+                          - img [ref=e480]
+                          - generic [ref=e482]: Priority 5
+                      - generic [ref=e483]:
+                        - img [ref=e484]
+                        - generic [ref=e486]: Oct 13, 8:00 AM
+                    - generic [ref=e490]: D
+                    - generic [ref=e491]:
+                      - generic [ref=e493]: todo
+                      - generic [ref=e494]: Oct 12, 2025
+                - generic [ref=e495] [cursor=pointer]:
+                  - generic [ref=e497]:
+                    - generic [ref=e498]:
+                      - heading "hahaha" [level=3] [ref=e499]
+                      - paragraph
+                    - button [ref=e500]:
+                      - img
+                  - generic [ref=e501]:
+                    - generic [ref=e502]:
+                      - generic [ref=e503]:
+                        - generic [ref=e504]:
+                          - img [ref=e505]
+                          - generic [ref=e508]: To Do
+                        - generic [ref=e509]:
+                          - img [ref=e510]
+                          - generic [ref=e512]: Priority 5
+                      - generic [ref=e513]:
+                        - img [ref=e514]
+                        - generic [ref=e516]: Oct 13, 11:59 PM
+                    - generic [ref=e520]: D
+                    - generic [ref=e521]:
+                      - generic [ref=e523]: todo
+                      - generic [ref=e524]: Oct 12, 2025
+                - generic [ref=e525] [cursor=pointer]:
+                  - generic [ref=e527]:
+                    - generic [ref=e528]:
+                      - heading "Hello" [level=3] [ref=e529]
+                      - paragraph [ref=e530]: hahahah
+                    - button [ref=e531]:
+                      - img
+                  - generic [ref=e532]:
+                    - generic [ref=e533]:
+                      - generic [ref=e534]:
+                        - generic [ref=e535]:
+                          - img [ref=e536]
+                          - generic [ref=e539]: Completed
+                        - generic [ref=e540]:
+                          - img [ref=e541]
+                          - generic [ref=e543]: Priority 5
+                      - generic [ref=e544]:
+                        - img [ref=e545]
+                        - generic [ref=e547]: Oct 14, 8:00 AM
+                    - generic [ref=e549]:
+                      - generic [ref=e551]: D
+                      - generic [ref=e553]: T
+                      - generic [ref=e555]: D
+                    - generic [ref=e556]:
+                      - generic [ref=e558]: completed
+                      - generic [ref=e559]: Oct 11, 2025
+                - generic [ref=e560] [cursor=pointer]:
+                  - generic [ref=e562]:
+                    - generic [ref=e563]:
+                      - heading "Testing recurring Task" [level=3] [ref=e564]
+                      - paragraph
+                    - button [ref=e565]:
+                      - img
+                  - generic [ref=e566]:
+                    - generic [ref=e567]:
+                      - generic [ref=e568]:
+                        - generic [ref=e569]:
+                          - img [ref=e570]
+                          - generic [ref=e573]: To Do
+                        - generic [ref=e574]:
+                          - img [ref=e575]
+                          - generic [ref=e577]: Priority 5
+                        - generic [ref=e578]:
+                          - img [ref=e579]
+                          - generic [ref=e584]: Recurring
+                      - generic [ref=e585]:
+                        - img [ref=e586]
+                        - generic [ref=e588]: Oct 18, 9:00 AM
+                    - generic [ref=e592]: D
+                    - generic [ref=e593]:
+                      - generic [ref=e595]: todo
+                      - generic [ref=e596]: Oct 08, 2025
+                - generic [ref=e597] [cursor=pointer]:
+                  - generic [ref=e599]:
+                    - generic [ref=e600]:
+                      - heading "ajsbj" [level=3] [ref=e601]
+                      - paragraph
+                    - button [ref=e602]:
+                      - img
+                  - generic [ref=e603]:
+                    - generic [ref=e605]:
+                      - generic [ref=e606]:
+                        - img [ref=e607]
+                        - generic [ref=e610]: Completed
+                      - generic [ref=e611]:
+                        - img [ref=e612]
+                        - generic [ref=e614]: Priority 10
+                    - generic [ref=e616]:
+                      - generic [ref=e618]: D
+                      - generic [ref=e620]: T
+                    - generic [ref=e621]:
+                      - generic [ref=e623]: completed
+                      - generic [ref=e624]: Oct 07, 2025
+                - generic [ref=e625] [cursor=pointer]:
+                  - generic [ref=e627]:
+                    - generic [ref=e628]:
+                      - heading "tes" [level=3] [ref=e629]
+                      - paragraph
+                    - button [ref=e630]:
+                      - img
+                  - generic [ref=e631]:
+                    - generic [ref=e633]:
+                      - generic [ref=e634]:
+                        - img [ref=e635]
+                        - generic [ref=e638]: In Progress
+                      - generic [ref=e639]:
+                        - img [ref=e640]
+                        - generic [ref=e642]: Priority 1
+                    - generic [ref=e644]:
+                      - generic [ref=e646]: D
+                      - generic [ref=e648]: D
+                      - generic [ref=e650]: D
+                      - generic [ref=e652]: "+1"
+                    - generic [ref=e653]:
+                      - generic [ref=e655]: in progress
+                      - generic [ref=e656]: Oct 07, 2025
+                - generic [ref=e657] [cursor=pointer]:
+                  - generic [ref=e659]:
+                    - generic [ref=e660]:
+                      - heading "task 3" [level=3] [ref=e661]
+                      - paragraph
+                    - button [ref=e662]:
+                      - img
+                  - generic [ref=e663]:
+                    - generic [ref=e664]:
+                      - generic [ref=e665]:
+                        - generic [ref=e666]:
+                          - img [ref=e667]
+                          - generic [ref=e670]: To Do
+                        - generic [ref=e671]:
+                          - img [ref=e672]
+                          - generic [ref=e674]: Priority 5
+                        - generic [ref=e675]:
+                          - img [ref=e676]
+                          - generic [ref=e681]: Recurring
+                      - generic [ref=e682]:
+                        - img [ref=e683]
+                        - generic [ref=e685]: Oct 16, 9:00 AM
+                    - generic [ref=e687]:
+                      - generic [ref=e689]: D
+                      - generic [ref=e691]: M
+                    - generic [ref=e692]:
+                      - generic [ref=e694]: todo
+                      - generic [ref=e695]: Oct 05, 2025
+                - generic [ref=e696] [cursor=pointer]:
+                  - generic [ref=e698]:
+                    - generic [ref=e699]:
+                      - heading "fghjkl" [level=3] [ref=e700]
+                      - paragraph
+                    - button [ref=e701]:
+                      - img
+                  - generic [ref=e702]:
+                    - generic [ref=e704]:
+                      - generic [ref=e705]:
+                        - img [ref=e706]
+                        - generic [ref=e708]: Cancelled
+                      - generic [ref=e709]:
+                        - img [ref=e710]
+                        - generic [ref=e712]: Priority 5
+                    - generic [ref=e716]: D
+                    - generic [ref=e717]:
+                      - generic [ref=e719]: cancelled
+                      - generic [ref=e720]: Oct 05, 2025
+                - generic [ref=e721] [cursor=pointer]:
+                  - generic [ref=e723]:
+                    - generic [ref=e724]:
+                      - heading "Spm Planning" [level=3] [ref=e725]
+                      - paragraph [ref=e726]: meeting at 3pm
+                    - button [ref=e727]:
+                      - img
+                  - generic [ref=e728]:
+                    - generic [ref=e729]:
+                      - generic [ref=e730]:
+                        - generic [ref=e731]:
+                          - img [ref=e732]
+                          - generic [ref=e735]: Completed
+                        - generic [ref=e736]:
+                          - img [ref=e737]
+                          - generic [ref=e739]: Priority 3
+                      - generic [ref=e740]:
+                        - img [ref=e741]
+                        - generic [ref=e743]: Oct 08, 8:00 AM
+                    - generic [ref=e745]:
+                      - generic [ref=e747]: D
+                      - generic [ref=e749]: M
+                    - generic [ref=e750]:
+                      - generic [ref=e752]: completed
+                      - generic [ref=e753]: Oct 05, 2025
+```

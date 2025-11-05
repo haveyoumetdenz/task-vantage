@@ -3,6 +3,7 @@ import { getDocs, collection } from 'firebase/firestore'
 import { clearCollection } from '@/test/emulatorDb'
 import { createRecurringTemplateEmu, materializeInstancesFromConfigEmu } from '@/services/recurrence.emu'
 import { db } from '@/test/emulatorDb'
+import { checkEmulatorRunning, getEmulatorNotRunningMessage } from './emulator-check.helper'
 
 async function clearAll() {
   await clearCollection('tasks')
@@ -11,6 +12,12 @@ async function clearAll() {
 
 describe('TM-COR-05 Task Recurrence (Firestore Emulator)', () => {
   beforeAll(async () => {
+    // Check if emulator is running
+    const isRunning = await checkEmulatorRunning()
+    if (!isRunning) {
+      console.error(getEmulatorNotRunningMessage())
+      throw new Error('Firestore Emulator is not running. Please start it with: npm run emulator:start')
+    }
     await clearAll()
   })
 

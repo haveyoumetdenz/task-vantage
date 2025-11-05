@@ -29,6 +29,7 @@ import SimpleVirtualInstanceDemo from "./pages/SimpleVirtualInstanceDemo";
 import TeamReports from "./pages/TeamReports";
 import OrganizationReports from "./pages/OrganizationReports";
 import UserTaskReport from "./pages/UserTaskReport";
+import E2ETestPage from "./pages/E2ETestPage";
 
 const queryClient = new QueryClient();
 
@@ -165,6 +166,13 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <UserTaskReport />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/e2e-test" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <E2ETestPage />
                 </AppLayout>
               </ProtectedRoute>
             } />

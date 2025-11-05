@@ -1,18 +1,27 @@
-import { addDoc, collection, getDoc, doc } from 'firebase/firestore'
+import { addDoc, collection, getDoc, doc, updateDoc } from 'firebase/firestore'
 import { db } from '@/test/emulatorDb'
-import { validateProjectData } from '@/utils/projectValidation'
+import { validateProjectData, sanitizeProjectData, calculateProjectProgress } from '@/utils/projectValidation'
 
 export async function createProjectEmu(data: any): Promise<string> {
   const v = validateProjectData(data)
   if (!v.valid) throw new Error(v.errors.join(', '))
+  const sanitized = sanitizeProjectData(data)
   const toSave = {
-    ...data,
+    ...sanitized,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    status: data.status || 'active',
+    status: sanitized.status || 'active',
   }
-  const ref = await addDoc(collection(db, 'projects'), toSave)
+  // Filter out undefined fields (Firestore rejects undefined values)
+  const filtered = Object.fromEntries(Object.entries(toSave).filter(([_, val]) => val !== undefined))
+  const ref = await addDoc(collection(db, 'projects'), filtered)
   return ref.id
+}
+
+export async function updateProjectProgressEmu(projectId: string, tasks: any[]): Promise<number> {
+  const progress = calculateProjectProgress(tasks)
+  await updateDoc(doc(db, 'projects', projectId), { progress })
+  return progress
 }
 
 export async function getProjectByIdEmu(id: string): Promise<{ exists: boolean; data?: any }> {

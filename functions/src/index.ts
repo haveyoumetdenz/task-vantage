@@ -150,19 +150,106 @@ export const deleteUserAccount = onCall(async (request) => {
 
     console.log('🗑️ Deleting user account:', userId, 'by:', request.auth.uid)
 
-    // Delete from Firestore first
-    await getFirestore().collection('profiles').doc(userId).delete()
+    const db = getFirestore()
+    let tasksDeleted = 0
+    let tasksUnassigned = 0
+    let projectsUnassigned = 0
+
+    // 1. Handle tasks assigned to this user
+    try {
+      // Find all tasks where user is assigned
+      const tasksQuery = await db.collection('tasks')
+        .where('assigneeIds', 'array-contains', userId)
+        .get()
+      
+      console.log(`📋 Found ${tasksQuery.size} tasks assigned to user ${userId}`)
+      
+      // Process each task
+      const batch = db.batch()
+      for (const taskDoc of tasksQuery.docs) {
+        const taskData = taskDoc.data()
+        const assigneeIds = taskData.assigneeIds || []
+        
+        // If task is only assigned to this user, delete it
+        if (assigneeIds.length === 1 && assigneeIds[0] === userId) {
+          batch.delete(taskDoc.ref)
+          tasksDeleted++
+          console.log(`🗑️ Deleting task ${taskDoc.id} (only assigned to deleted user)`)
+        } else {
+          // Remove user from assigneeIds
+          const updatedAssigneeIds = assigneeIds.filter((id: string) => id !== userId)
+          batch.update(taskDoc.ref, {
+            assigneeIds: updatedAssigneeIds,
+            updatedAt: new Date().toISOString()
+          })
+          tasksUnassigned++
+          console.log(`👤 Unassigning user from task ${taskDoc.id}`)
+        }
+      }
+      
+      // Commit batch update
+      if (tasksQuery.size > 0) {
+        await batch.commit()
+        console.log(`✅ Task cleanup completed: ${tasksDeleted} deleted, ${tasksUnassigned} unassigned`)
+      }
+    } catch (taskError: any) {
+      console.error('❌ Error handling tasks:', taskError)
+      // Continue with deletion even if task cleanup fails
+    }
+
+    // 2. Handle projects assigned to this user
+    try {
+      // Find all projects where user is assigned
+      const projectsQuery = await db.collection('projects')
+        .where('assigneeIds', 'array-contains', userId)
+        .get()
+      
+      console.log(`📋 Found ${projectsQuery.size} projects assigned to user ${userId}`)
+      
+      // Process each project
+      const batch = db.batch()
+      for (const projectDoc of projectsQuery.docs) {
+        const projectData = projectDoc.data()
+        const assigneeIds = projectData.assigneeIds || []
+        
+        // Remove user from assigneeIds (don't delete projects - they may have other members)
+        const updatedAssigneeIds = assigneeIds.filter((id: string) => id !== userId)
+        if (updatedAssigneeIds.length !== assigneeIds.length) {
+          batch.update(projectDoc.ref, {
+            assigneeIds: updatedAssigneeIds,
+            updatedAt: new Date().toISOString()
+          })
+          projectsUnassigned++
+          console.log(`👤 Unassigning user from project ${projectDoc.id}`)
+        }
+      }
+      
+      // Commit batch update
+      if (projectsQuery.size > 0) {
+        await batch.commit()
+        console.log(`✅ Project cleanup completed: ${projectsUnassigned} unassigned`)
+      }
+    } catch (projectError: any) {
+      console.error('❌ Error handling projects:', projectError)
+      // Continue with deletion even if project cleanup fails
+    }
+
+    // 3. Delete profile from Firestore
+    await db.collection('profiles').doc(userId).delete()
     console.log('✅ Firestore profile deleted')
 
-    // Delete from Firebase Auth
+    // 4. Delete from Firebase Auth
     await getAuth().deleteUser(userId)
     console.log('✅ Firebase Auth account deleted')
 
     return {
       success: true,
-      message: 'User account deleted successfully',
+      message: `User account deleted successfully. ${tasksDeleted} task(s) deleted, ${tasksUnassigned} task(s) unassigned, ${projectsUnassigned} project(s) unassigned.`,
       deletedBy: request.auth.uid,
-      reason: reason || 'Account deleted by administrator'
+      reason: reason || 'Account deleted by administrator',
+      tasksDeleted,
+      tasksUnassigned,
+      projectsUnassigned
     }
 
   } catch (error) {
@@ -170,3 +257,4 @@ export const deleteUserAccount = onCall(async (request) => {
     throw new HttpsError('internal', `Failed to delete user account: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 })
+

@@ -6,6 +6,7 @@ import { createTaskAssignmentNotification, createTaskCompletionNotification } fr
 import { useToast } from '@/hooks/use-toast'
 import { updateProjectProgress } from '@/utils/projectProgress'
 import { validateTaskData, sanitizeTaskData } from '@/utils/taskValidation'
+import { createActivityLogEntry } from '@/utils/activityLog'
 
 export interface Task {
   id: string
@@ -76,38 +77,132 @@ export const useFirebaseTasks = (projectId?: string) => {
         orderBy('createdAt', 'desc')
       )
     } else {
-      // For general task views, show user's own tasks OR tasks assigned to user
-      q = query(
+      // For general task views, show:
+      // 1. Tasks assigned to user (assigneeIds contains user.uid)
+      // 2. Tasks where user is mentioned in activity log
+      // We'll fetch both and merge them
+      
+      // First query: tasks assigned to user
+      const assignedTasksQuery = query(
         collection(db, 'tasks'),
         where('assigneeIds', 'array-contains', user.uid),
         orderBy('createdAt', 'desc')
       )
+      
+      // Second query: find tasks where user is mentioned in activities
+      const mentionedActivitiesQuery = query(
+        collection(db, 'activities'),
+        where('entityType', '==', 'task'),
+        where('mentions', 'array-contains', user.uid),
+        orderBy('timestamp', 'desc')
+      )
+      
+      // Set up listeners for both queries
+      const unsubscribes: (() => void)[] = []
+      const allTasksMap = new Map<string, Task>()
+      
+      const updateTasks = () => {
+        const tasksArray = Array.from(allTasksMap.values())
+        const processedTasks = tasksArray.map(task => ({
+          ...task,
+          isRecurring: task.isRecurring === true
+        })) as Task[]
+        setTasks(processedTasks)
+        setLoading(false)
+      }
+      
+      // Listen to assigned tasks
+      const unsubscribeAssigned = onSnapshot(assignedTasksQuery, (snapshot) => {
+        snapshot.docs.forEach(doc => {
+          const data = doc.data()
+          allTasksMap.set(doc.id, {
+            id: doc.id,
+            ...data,
+            isRecurring: data.isRecurring === true
+          } as Task)
+        })
+        updateTasks()
+      }, (error) => {
+        console.error('Tasks query error:', error)
+        setLoading(false)
+      })
+      unsubscribes.push(unsubscribeAssigned)
+      
+      // Listen to mentioned activities and fetch those tasks
+      const unsubscribeMentions = onSnapshot(mentionedActivitiesQuery, async (snapshot) => {
+        const mentionedTaskIds = new Set<string>()
+        snapshot.docs.forEach(doc => {
+          const activityData = doc.data()
+          if (activityData.entityId) {
+            mentionedTaskIds.add(activityData.entityId)
+          }
+        })
+        
+        // Fetch tasks that were mentioned
+        const taskPromises = Array.from(mentionedTaskIds).map(async (taskId) => {
+          try {
+            const taskDoc = await getDoc(doc(db, 'tasks', taskId))
+            if (taskDoc.exists()) {
+              const taskData = taskDoc.data()
+              return {
+                id: taskDoc.id,
+                ...taskData,
+                isRecurring: taskData.isRecurring === true
+              } as Task
+            }
+          } catch (error) {
+            console.error(`Error fetching mentioned task ${taskId}:`, error)
+          }
+          return null
+        })
+        
+        const mentionedTasks = (await Promise.all(taskPromises)).filter((t): t is Task => t !== null)
+        mentionedTasks.forEach(task => {
+          allTasksMap.set(task.id, task)
+        })
+        updateTasks()
+      }, (error) => {
+        console.error('Mentioned activities query error:', error)
+      })
+      unsubscribes.push(unsubscribeMentions)
+      
+      return () => {
+        unsubscribes.forEach(unsub => unsub())
+      }
     }
 
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = snapshot.docs.map(doc => {
-        const data = doc.data()
-        console.log('Raw task data from Firebase:', doc.id, data)
-        console.log('isRecurring in raw data:', data.isRecurring)
-        const processedTask = {
-          id: doc.id,
-          ...data,
-          // Ensure isRecurring is always a boolean, defaulting to false if undefined
-          isRecurring: data.isRecurring === true
-        }
-        console.log('Processed task isRecurring:', processedTask.isRecurring)
-        return processedTask
-      }) as Task[]
-      console.log('Processed tasks data:', tasksData)
-      setTasks(tasksData)
-      setLoading(false)
-    }, (error) => {
-      console.error('Tasks query error:', error)
-      setLoading(false)
-    })
+    // Handle project views separately
+    if (projectId) {
+      const q = query(
+        collection(db, 'tasks'),
+        where('projectId', '==', projectId),
+        orderBy('createdAt', 'desc')
+      )
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const tasksData = snapshot.docs.map(doc => {
+          const data = doc.data()
+          console.log('Raw task data from Firebase:', doc.id, data)
+          console.log('isRecurring in raw data:', data.isRecurring)
+          const processedTask = {
+            id: doc.id,
+            ...data,
+            // Ensure isRecurring is always a boolean, defaulting to false if undefined
+            isRecurring: data.isRecurring === true
+          }
+          console.log('Processed task isRecurring:', processedTask.isRecurring)
+          return processedTask
+        }) as Task[]
+        console.log('Processed tasks data:', tasksData)
+        setTasks(tasksData)
+        setLoading(false)
+      }, (error) => {
+        console.error('Tasks query error:', error)
+        setLoading(false)
+      })
 
-    return () => unsubscribe()
+      return () => unsubscribe()
+    }
   }, [user, projectId])
 
   const createTask = async (taskData: CreateTaskData) => {
@@ -160,6 +255,16 @@ export const useFirebaseTasks = (projectId?: string) => {
       console.log('Final task document to save:', taskDoc)
       const docRef = await addDoc(collection(db, 'tasks'), taskDoc)
       
+      // Create activity log entry for task creation
+      await createActivityLogEntry({
+        entityType: 'task',
+        entityId: docRef.id,
+        type: 'creation',
+        userId: user.uid,
+        userName: user.email || 'Someone',
+        content: `Task "${taskDoc.title}" was created`
+      })
+      
       // Send assignment notifications to all assignees (except the creator)
       const assigneeIds = taskDoc.assigneeIds || []
       const otherAssignees = assigneeIds.filter(id => id !== user.uid)
@@ -181,6 +286,16 @@ export const useFirebaseTasks = (projectId?: string) => {
         } catch (error) {
           console.error('❌ Error sending task assignment notifications:', error)
         }
+        
+        // Create activity log entry for assignment
+        await createActivityLogEntry({
+          entityType: 'task',
+          entityId: docRef.id,
+          type: 'assignment',
+          userId: user.uid,
+          userName: user.email || 'Someone',
+          content: `Task assigned to ${otherAssignees.length} user${otherAssignees.length !== 1 ? 's' : ''}`
+        })
       }
       
       // Update project progress if task is created as completed
@@ -225,65 +340,125 @@ export const useFirebaseTasks = (projectId?: string) => {
         Object.entries(updateData).filter(([_, value]) => value !== undefined)
       )
       
+      const currentTask = tasks.find(t => t.id === id)
+      
       await updateDoc(taskRef, {
         ...filteredUpdateData,
         updatedAt: new Date().toISOString()
       })
 
-      // Send assignment notifications if assignees are being updated
-      if (updateData.assigneeIds) {
-        const currentTask = tasks.find(t => t.id === id)
-        if (currentTask) {
+      // Create activity log entries for changes
+      if (currentTask) {
+        // Status change activity
+        if (updateData.status && updateData.status !== currentTask.status) {
+          const statusLabels: Record<string, string> = {
+            todo: 'To Do',
+            in_progress: 'In Progress',
+            completed: 'Completed',
+            cancelled: 'Cancelled'
+          }
+          
+          await createActivityLogEntry({
+            entityType: 'task',
+            entityId: id,
+            type: 'status_change',
+            userId: user.uid,
+            userName: user.email || 'Someone',
+            content: `Status changed from "${statusLabels[currentTask.status] || currentTask.status}" to "${statusLabels[updateData.status] || updateData.status}"`,
+            metadata: {
+              field: 'status',
+              oldValue: currentTask.status,
+              newValue: updateData.status
+            }
+          })
+        }
+        
+        // Assignment change activity
+        if (updateData.assigneeIds) {
           const oldAssignees = currentTask.assigneeIds || []
           const newAssignees = updateData.assigneeIds
           const newlyAssigned = newAssignees.filter(id => !oldAssignees.includes(id))
+          const removedAssignees = oldAssignees.filter(id => !newAssignees.includes(id))
           
-          if (newlyAssigned.length > 0) {
-            console.log('🔔 Sending task assignment notifications to new assignees:', newlyAssigned)
-            try {
-              await Promise.all(
-                newlyAssigned.map(assigneeId => 
-                  createTaskAssignmentNotification(
-                    assigneeId, 
-                    currentTask.title, 
-                    id, 
-                    user.email || 'Someone'
-                  )
+          if (newlyAssigned.length > 0 || removedAssignees.length > 0) {
+            let content = ''
+            if (newlyAssigned.length > 0) {
+              content += `Assigned to ${newlyAssigned.length} new user${newlyAssigned.length !== 1 ? 's' : ''}`
+            }
+            if (removedAssignees.length > 0) {
+              if (content) content += '. '
+              content += `Removed ${removedAssignees.length} assignee${removedAssignees.length !== 1 ? 's' : ''}`
+            }
+            
+            await createActivityLogEntry({
+              entityType: 'task',
+              entityId: id,
+              type: 'assignment',
+              userId: user.uid,
+              userName: user.email || 'Someone',
+              content
+            })
+          }
+        }
+      }
+
+      // Send assignment notifications if assignees are being updated
+      if (updateData.assigneeIds && currentTask) {
+        const oldAssignees = currentTask.assigneeIds || []
+        const newAssignees = updateData.assigneeIds
+        const newlyAssigned = newAssignees.filter(id => !oldAssignees.includes(id))
+        
+        if (newlyAssigned.length > 0) {
+          console.log('🔔 Sending task assignment notifications to new assignees:', newlyAssigned)
+          try {
+            await Promise.all(
+              newlyAssigned.map(assigneeId => 
+                createTaskAssignmentNotification(
+                  assigneeId, 
+                  currentTask.title, 
+                  id, 
+                  user.email || 'Someone'
                 )
               )
-              console.log('✅ Task assignment notifications sent')
-            } catch (error) {
-              console.error('❌ Error sending task assignment notifications:', error)
-            }
+            )
+            console.log('✅ Task assignment notifications sent')
+          } catch (error) {
+            console.error('❌ Error sending task assignment notifications:', error)
           }
         }
       }
 
       // Send completion notification if task is being completed
-      if (updateData.status === 'completed') {
-        // Get the current task to find assignees
-        const currentTask = tasks.find(t => t.id === id)
-        if (currentTask) {
-          const assigneeIds = currentTask.assigneeIds || []
-          const otherAssignees = assigneeIds.filter(assigneeId => assigneeId !== user.uid)
-          
-          if (otherAssignees.length > 0) {
-            console.log('🔔 Sending task completion notifications to:', otherAssignees)
-            try {
-              await Promise.all(
-                otherAssignees.map(assigneeId => 
-                  createTaskCompletionNotification(
-                    assigneeId, 
-                    currentTask.title, 
-                    id, 
-                    user.email || 'Someone'
-                  )
+      if (updateData.status === 'completed' && currentTask) {
+        const assigneeIds = currentTask.assigneeIds || []
+        const otherAssignees = assigneeIds.filter(assigneeId => assigneeId !== user.uid)
+        
+        // Create completion activity log entry
+        await createActivityLogEntry({
+          entityType: 'task',
+          entityId: id,
+          type: 'completion',
+          userId: user.uid,
+          userName: user.email || 'Someone',
+          content: `Task "${currentTask.title}" was marked as completed`
+        })
+        
+        if (otherAssignees.length > 0) {
+          console.log('🔔 Sending task completion notifications to:', otherAssignees)
+          try {
+            await Promise.all(
+              otherAssignees.map(assigneeId => 
+                createTaskCompletionNotification(
+                  assigneeId, 
+                  currentTask.title, 
+                  id, 
+                  user.email || 'Someone'
                 )
               )
-              console.log('✅ Task completion notifications sent')
-            } catch (error) {
-              console.error('❌ Error sending task completion notifications:', error)
-            }
+            )
+            console.log('✅ Task completion notifications sent')
+          } catch (error) {
+            console.error('❌ Error sending task completion notifications:', error)
           }
         }
       }
@@ -422,6 +597,18 @@ export const useFirebaseTasks = (projectId?: string) => {
       // Get the task before deleting to check if it has a projectId
       const taskToDelete = tasks.find(t => t.id === taskId)
       const projectId = taskToDelete?.projectId
+      
+      // Create activity log entry for deletion (before deleting)
+      if (taskToDelete) {
+        await createActivityLogEntry({
+          entityType: 'task',
+          entityId: taskId,
+          type: 'status_change',
+          userId: user.uid,
+          userName: user.email || 'Someone',
+          content: `Task "${taskToDelete.title}" was deleted`
+        })
+      }
       
       await deleteDoc(doc(db, 'tasks', taskId))
       
