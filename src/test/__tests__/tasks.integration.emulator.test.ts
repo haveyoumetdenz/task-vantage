@@ -27,8 +27,10 @@ describe('TM-COR-01 Create Task (Firestore Emulator)', () => {
 
   afterEach(async () => {
     // Clean up after each test to ensure no data leaks
+    // Wait a bit longer to ensure test operations are complete
+    await new Promise(resolve => setTimeout(resolve, 200))
     await clearTasks()
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise(resolve => setTimeout(resolve, 100))
   })
 
   afterAll(async () => {
@@ -40,19 +42,19 @@ describe('TM-COR-01 Create Task (Firestore Emulator)', () => {
     const id = await createTaskEmu({ title: 'Emu Task', priority: 5 })
     
     // Wait longer for emulator to commit (emulator can be slow)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     // Wait and retry until task is readable (emulator timing)
     let task: any
     let retries = 0
-    const maxRetries = 100 // Significantly increased retries
+    const maxRetries = 50 // Reduced retries but with longer waits
     while (retries < maxRetries) {
       task = await getTaskByIdEmu(id)
       if (task.exists && task.data && task.data.title) {
         // Task found and readable
         break
       }
-      await new Promise(resolve => setTimeout(resolve, 300)) // Longer wait between retries
+      await new Promise(resolve => setTimeout(resolve, 500)) // Longer wait between retries
       retries++
     }
     
