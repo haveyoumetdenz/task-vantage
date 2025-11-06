@@ -41,20 +41,17 @@ describe('TM-COR-01 Create Task (Firestore Emulator)', () => {
   it('creates a valid task and can read it back', async () => {
     const id = await createTaskEmu({ title: 'Emu Task', priority: 5 })
     
-    // Wait longer for emulator to commit (emulator can be slow)
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Wait and retry until task is readable (emulator timing)
+    // createTaskEmu now uses waitForPendingWrites, so task should be immediately readable
+    // But add a small delay and retry just in case
     let task: any
     let retries = 0
-    const maxRetries = 50 // Reduced retries but with longer waits
+    const maxRetries = 10 // Reduced retries since waitForPendingWrites should handle it
     while (retries < maxRetries) {
       task = await getTaskByIdEmu(id)
       if (task.exists && task.data && task.data.title) {
-        // Task found and readable
         break
       }
-      await new Promise(resolve => setTimeout(resolve, 500)) // Longer wait between retries
+      await new Promise(resolve => setTimeout(resolve, 200))
       retries++
     }
     
@@ -66,10 +63,7 @@ describe('TM-COR-01 Create Task (Firestore Emulator)', () => {
     expect(task.data?.title).toBe('Emu Task')
     expect(task.data?.status).toBe('todo')
     expect(task.data?.priority).toBe(5)
-    
-    // Verify task exists by reading it back (no need to query all tasks)
-    // This avoids RESOURCE_EXHAUSTED errors when collection is large
-  }, 120000) // Increase timeout to 120 seconds
+  }, 60000)
 
   it('rejects invalid task (empty title)', async () => {
     await expect(createTaskEmu({ title: '', priority: 5 })).rejects.toThrow()

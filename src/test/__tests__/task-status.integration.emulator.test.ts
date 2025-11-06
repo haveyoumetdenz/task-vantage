@@ -39,20 +39,17 @@ describe('TM-COR-03: Change Task Status (Firestore Emulator)', () => {
   it('should update task status from todo to in_progress', async () => {
     const taskId = await createTaskEmu({ title: 'Status Test Task', status: 'todo', priority: 5 })
     
-    // Wait longer for emulator to commit (emulator can be slow)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Wait and retry until task exists and is readable (emulator may have slight delay)
+    // createTaskEmu now uses waitForPendingWrites, so task should be immediately readable
+    // But add a small delay and retry just in case
     let task: any
     let retries = 0
-    const maxRetries = 100 // Significantly increased retries
+    const maxRetries = 10 // Reduced retries since waitForPendingWrites should handle it
     while (retries < maxRetries) {
       task = await getTaskByIdEmu(taskId)
       if (task.exists && task.data && task.data.status === 'todo') {
-        // Task is fully readable and has correct status
         break
       }
-      await new Promise(resolve => setTimeout(resolve, 300)) // Longer wait between retries
+      await new Promise(resolve => setTimeout(resolve, 200))
       retries++
     }
     
@@ -63,37 +60,31 @@ describe('TM-COR-03: Change Task Status (Firestore Emulator)', () => {
     expect(task.exists).toBe(true)
     expect(task.data?.status).toBe('todo')
     
-    // Additional delay before update to ensure task is stable
-    await new Promise(resolve => setTimeout(resolve, 200))
-    
     await updateTaskStatusEmu(taskId, 'in_progress')
     
-    // Wait for update to complete with more retries
+    // updateTaskStatusEmu now uses waitForPendingWrites, so update should be immediately readable
     let updatedTask: any
     let updateRetries = 0
-    const maxUpdateRetries = 30 // Increased retries
+    const maxUpdateRetries = 10 // Reduced retries
     while (updateRetries < maxUpdateRetries) {
       updatedTask = await getTaskByIdEmu(taskId)
       if (updatedTask.exists && updatedTask.data?.status === 'in_progress') break
-      await new Promise(resolve => setTimeout(resolve, 200)) // Longer wait
+      await new Promise(resolve => setTimeout(resolve, 200))
       updateRetries++
     }
     
     expect(updatedTask.exists).toBe(true)
     expect(updatedTask.data?.status).toBe('in_progress')
     expect(updatedTask.data?.updatedAt).toBeDefined()
-  }, 120000) // Increase test timeout to 120 seconds
+  }, 60000)
 
   it('should update task status from in_progress to completed', async () => {
     const taskId = await createTaskEmu({ title: 'Complete Test Task', status: 'in_progress', priority: 5 })
     
-    // Additional wait after createTaskEmu returns
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    // Wait and retry until task exists and is readable (emulator may have slight delay)
+    // createTaskEmu now uses waitForPendingWrites, so task should be immediately readable
     let task: any
     let retries = 0
-    const maxRetries = 40
+    const maxRetries = 10 // Reduced retries since waitForPendingWrites should handle it
     while (retries < maxRetries) {
       task = await getTaskByIdEmu(taskId)
       if (task.exists && task.data && task.data.status === 'in_progress') break

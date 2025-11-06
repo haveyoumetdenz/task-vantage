@@ -1,4 +1,4 @@
-import { addDoc, collection, getDoc, doc, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, getDoc, doc, updateDoc, waitForPendingWrites } from 'firebase/firestore'
 import { db } from '@/test/emulatorDb'
 import { validateTaskData, sanitizeTaskData } from '@/utils/taskValidation'
 import { validateStatusTransition } from '@/utils/statusTransitionValidation'
@@ -18,25 +18,36 @@ export async function createTaskEmu(data: any): Promise<string> {
   try {
     const ref = await addDoc(collection(db, 'tasks'), filtered)
     
-    // Wait a bit for document to be committed (emulator may have slight delay)
-    await new Promise(resolve => setTimeout(resolve, 200))
-    
-    // Try to verify immediately
+    // Wait for pending writes to be committed (ensures emulator consistency)
     try {
-      const snap = await getDoc(doc(db, 'tasks', ref.id))
-      if (snap.exists() && snap.data() && snap.data().title) {
-        return ref.id
-      }
+      await waitForPendingWrites(db)
+      // Additional wait for emulator to fully commit
+      await new Promise(resolve => setTimeout(resolve, 300))
     } catch (error: any) {
-      // Task might not be readable yet - that's okay, return ID anyway
+      // If waitForPendingWrites fails, wait longer manually
+      await new Promise(resolve => setTimeout(resolve, 800))
     }
     
-    // Return the ID - if addDoc succeeded, the task exists
-    // Tests will handle retries for reading if needed
+    // Verify the document exists and is readable
+    let retries = 0
+    const maxRetries = 30 // Increased retries
+    while (retries < maxRetries) {
+      try {
+        const snap = await getDoc(doc(db, 'tasks', ref.id))
+        if (snap.exists() && snap.data() && snap.data().title) {
+          return ref.id
+        }
+      } catch (error: any) {
+        // Continue retrying
+      }
+      await new Promise(resolve => setTimeout(resolve, 200))
+      retries++
+    }
+    
+    // If we can't verify, return the ID anyway (addDoc succeeded)
     return ref.id
   } catch (error: any) {
     console.error(`❌ Failed to create task:`, error)
-    // If addDoc fails, re-throw the error
     throw new Error(`Failed to create task: ${error.message || error}`)
   }
 }
@@ -80,20 +91,25 @@ export async function updateTaskStatusEmu(id: string, status: 'todo' | 'in_progr
     updatedAt: new Date().toISOString()
   })
   
-  // Wait for update to be committed (emulator may have slight delay)
+  // Wait for pending writes to be committed (ensures emulator consistency)
+  try {
+    await waitForPendingWrites(db)
+  } catch (error: any) {
+    // If waitForPendingWrites fails, wait a bit manually
+    await new Promise(resolve => setTimeout(resolve, 300))
+  }
+  
   // Verify update was successful
   let verifyRetries = 0
   const maxVerifyRetries = 20
   while (verifyRetries < maxVerifyRetries) {
     const verifySnap = await getDoc(doc(db, 'tasks', id))
     if (verifySnap.exists() && verifySnap.data()?.status === status) {
-      // Update was committed successfully
       return
     }
     await new Promise(resolve => setTimeout(resolve, 100))
     verifyRetries++
   }
-  // Don't throw error here - update was sent, emulator will eventually commit it
 }
 
 export async function updateTaskDueDateEmu(id: string, dueDate: string): Promise<void> {
@@ -116,19 +132,25 @@ export async function updateTaskDueDateEmu(id: string, dueDate: string): Promise
     updatedAt: new Date().toISOString()
   })
   
-  // Wait for update to be committed (emulator may have slight delay)
+  // Wait for pending writes to be committed (ensures emulator consistency)
+  try {
+    await waitForPendingWrites(db)
+  } catch (error: any) {
+    // If waitForPendingWrites fails, wait a bit manually
+    await new Promise(resolve => setTimeout(resolve, 300))
+  }
+  
+  // Verify update was successful
   let verifyRetries = 0
   const maxVerifyRetries = 20
   while (verifyRetries < maxVerifyRetries) {
     const verifySnap = await getDoc(doc(db, 'tasks', id))
     if (verifySnap.exists() && verifySnap.data()?.due_date === dueDate) {
-      // Update was committed successfully
       return
     }
     await new Promise(resolve => setTimeout(resolve, 100))
     verifyRetries++
   }
-  // Don't throw error here - update was sent, emulator will eventually commit it
 }
 
 export async function updateTaskProjectEmu(id: string, projectId: string | null): Promise<void> {
@@ -151,17 +173,23 @@ export async function updateTaskProjectEmu(id: string, projectId: string | null)
     updatedAt: new Date().toISOString()
   })
   
-  // Wait for update to be committed (emulator may have slight delay)
+  // Wait for pending writes to be committed (ensures emulator consistency)
+  try {
+    await waitForPendingWrites(db)
+  } catch (error: any) {
+    // If waitForPendingWrites fails, wait a bit manually
+    await new Promise(resolve => setTimeout(resolve, 300))
+  }
+  
+  // Verify update was successful
   let verifyRetries = 0
   const maxVerifyRetries = 20
   while (verifyRetries < maxVerifyRetries) {
     const verifySnap = await getDoc(doc(db, 'tasks', id))
     if (verifySnap.exists() && verifySnap.data()?.projectId === (projectId || null)) {
-      // Update was committed successfully
       return
     }
     await new Promise(resolve => setTimeout(resolve, 100))
     verifyRetries++
   }
-  // Don't throw error here - update was sent, emulator will eventually commit it
 }
