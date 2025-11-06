@@ -96,6 +96,16 @@ temp/
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
+firestore-debug.log
 
 # Local Firebase emulator
 firebase-export-*/
+
+# Test reports and results
+playwright-report/
+test-results/
+coverage/
+
+# Build outputs (already covered but being explicit)
+dist/
+build/
