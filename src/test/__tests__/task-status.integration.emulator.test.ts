@@ -16,26 +16,32 @@ describe('TM-COR-03: Change Task Status (Firestore Emulator)', () => {
       console.error(getEmulatorNotRunningMessage())
       throw new Error('Firestore Emulator is not running. Please start it with: npm run emulator:start')
     }
+  })
+
+  beforeEach(async () => {
+    // Clear tasks before each test to ensure isolation
     await clearTasks()
+    // Small delay to ensure cleanup is complete
+    await new Promise(resolve => setTimeout(resolve, 100))
   })
 
   it('should update task status from todo to in_progress', async () => {
     const taskId = await createTaskEmu({ title: 'Status Test Task', status: 'todo', priority: 5 })
     
-    // Additional wait after createTaskEmu returns (it already waits, but emulator may need more time)
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Wait longer for emulator to commit (emulator can be slow)
+    await new Promise(resolve => setTimeout(resolve, 1000))
     
     // Wait and retry until task exists and is readable (emulator may have slight delay)
     let task: any
     let retries = 0
-    const maxRetries = 40 // Increased retries even more
+    const maxRetries = 100 // Significantly increased retries
     while (retries < maxRetries) {
       task = await getTaskByIdEmu(taskId)
       if (task.exists && task.data && task.data.status === 'todo') {
         // Task is fully readable and has correct status
         break
       }
-      await new Promise(resolve => setTimeout(resolve, 200)) // Longer wait
+      await new Promise(resolve => setTimeout(resolve, 300)) // Longer wait between retries
       retries++
     }
     
@@ -65,7 +71,7 @@ describe('TM-COR-03: Change Task Status (Firestore Emulator)', () => {
     expect(updatedTask.exists).toBe(true)
     expect(updatedTask.data?.status).toBe('in_progress')
     expect(updatedTask.data?.updatedAt).toBeDefined()
-  }, 60000) // Increase test timeout to 60 seconds
+  }, 120000) // Increase test timeout to 120 seconds
 
   it('should update task status from in_progress to completed', async () => {
     const taskId = await createTaskEmu({ title: 'Complete Test Task', status: 'in_progress', priority: 5 })

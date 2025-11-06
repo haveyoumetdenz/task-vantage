@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { useToast } from '@/hooks/use-toast'
-// Removed Supabase import - using Firebase now
 import { Link, useNavigate } from 'react-router-dom'
 import { Loader2, ArrowLeft } from 'lucide-react'
 

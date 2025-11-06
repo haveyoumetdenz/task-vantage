@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
-// Removed Supabase import - using Firebase now
 
 const resetPasswordSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

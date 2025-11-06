@@ -35,6 +35,13 @@ export const storage = getStorage(app);
 
 // Connect to emulators if enabled
 if (USE_EMULATOR) {
+  console.log('🔧 Emulator mode enabled:', {
+    VITE_USE_FIREBASE_EMULATOR: import.meta.env.VITE_USE_FIREBASE_EMULATOR,
+    USE_FIREBASE_EMULATOR: import.meta.env.USE_FIREBASE_EMULATOR,
+    VITE_FIRESTORE_EMULATOR_HOST: import.meta.env.VITE_FIRESTORE_EMULATOR_HOST,
+    FIRESTORE_EMULATOR_HOST: import.meta.env.FIRESTORE_EMULATOR_HOST,
+  });
+  
   try {
     // Connect Firestore Emulator
     const firestoreHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || 
@@ -47,9 +54,15 @@ if (USE_EMULATOR) {
     // Already connected - that's fine
     if (!error.message?.includes('already been called')) {
       console.warn('⚠️ Firestore Emulator connection issue:', error.message);
+    } else {
+      console.log('ℹ️ Firestore Emulator already connected');
     }
   }
+} else {
+  console.log('ℹ️ Emulator mode disabled - using production Firebase');
+}
 
+if (USE_EMULATOR) {
   try {
     // Connect Auth Emulator (if needed)
     const authHost = import.meta.env.VITE_AUTH_EMULATOR_HOST || 

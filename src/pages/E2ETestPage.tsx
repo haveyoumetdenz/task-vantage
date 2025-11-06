@@ -108,16 +108,21 @@ export default function E2ETestPage() {
         title: data.title,
         description: data.description || undefined,
         status: data.status,
-        due_date: data.dueDate || undefined,
+        dueDate: data.dueDate || undefined, // Use dueDate instead of due_date
         assigneeIds: [], // E2E tests can add assignees if needed
       }
 
-      const projectId = await createProject(projectData)
+      const result = await createProject(projectData)
+      
+      // createProject returns an object with id property, or null on error
+      if (!result || !result.id) {
+        throw new Error('Failed to create project - no ID returned')
+      }
       
       setProjectResult({
         success: true,
         message: `Project created successfully!`,
-        projectId,
+        projectId: result.id,
       })
       
       toast({
@@ -193,9 +198,9 @@ export default function E2ETestPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="task-status-select">
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="task-status-select">
                               <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                           </FormControl>
@@ -248,7 +253,10 @@ export default function E2ETestPage() {
                 />
 
                 {taskResult && (
-                  <div className={`p-3 rounded-md border ${taskResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div 
+                    className={`p-3 rounded-md border ${taskResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
+                    data-testid={taskResult.success ? 'task-created-success' : 'task-created-error'}
+                  >
                     <div className="flex items-center gap-2">
                       {taskResult.success ? (
                         <CheckCircle className="h-4 w-4 text-green-600" />
@@ -258,7 +266,7 @@ export default function E2ETestPage() {
                       <span className={taskResult.success ? 'text-green-800' : 'text-red-800'}>
                         {taskResult.message}
                         {taskResult.taskId && (
-                          <span className="block text-xs mt-1">Task ID: {taskResult.taskId}</span>
+                          <span className="block text-xs mt-1" data-testid="task-created-id">Task ID: {taskResult.taskId}</span>
                         )}
                       </span>
                     </div>
@@ -316,9 +324,9 @@ export default function E2ETestPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="project-status-select">
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger data-testid="project-status-select">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                         </FormControl>
@@ -349,7 +357,10 @@ export default function E2ETestPage() {
                 />
 
                 {projectResult && (
-                  <div className={`p-3 rounded-md border ${projectResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div 
+                    className={`p-3 rounded-md border ${projectResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
+                    data-testid={projectResult.success ? 'project-created-success' : 'project-created-error'}
+                  >
                     <div className="flex items-center gap-2">
                       {projectResult.success ? (
                         <CheckCircle className="h-4 w-4 text-green-600" />
@@ -359,7 +370,7 @@ export default function E2ETestPage() {
                       <span className={projectResult.success ? 'text-green-800' : 'text-red-800'}>
                         {projectResult.message}
                         {projectResult.projectId && (
-                          <span className="block text-xs mt-1">Project ID: {projectResult.projectId}</span>
+                          <span className="block text-xs mt-1" data-testid="project-created-id">Project ID: {projectResult.projectId}</span>
                         )}
                       </span>
                     </div>

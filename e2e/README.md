@@ -1,324 +1,185 @@
-# E2E Testing with Playwright
+# E2E Testing Guide
 
-## 🎭 What Are E2E Tests?
+This directory contains end-to-end (E2E) tests using Playwright. For comprehensive testing documentation, see [TESTING.md](../../TESTING.md) in the root directory.
 
-E2E (End-to-End) tests open a **real browser** and interact with your application just like a real user would:
-- ✅ Opens Chrome/Firefox/Safari
-- ✅ Clicks buttons, fills forms, navigates pages
-- ✅ Sees the actual UI and interactions
-- ✅ Tests complete user journeys
+## Quick Start
 
-## 🔒 Is Data Entered into the Database?
+### Prerequisites
 
-**Yes, but it goes to the Firestore Emulator, NOT your production database!**
+1. Start Firebase Emulators:
+   ```bash
+   npm run emulator:start
+   ```
 
-### How It Works:
-1. **Firestore Emulator** runs locally (port 8080)
-2. **Your app** connects to the emulator during E2E tests
-3. **Playwright** opens a browser and interacts with your app
-4. **All data** (tasks, projects, etc.) goes to the emulator
-5. **Production database** is completely safe ✅
+2. Run E2E tests:
+   ```bash
+   npm run test:e2e
+   ```
 
----
+**Note:** Playwright automatically builds the app and starts the preview server.
 
-## 🚀 Quick Start
+## Test Structure
 
-### Step 1: Start Firestore Emulator
-
-```bash
-# In Terminal 1
-firebase emulators:start --only firestore
+```
+e2e/
+├── helpers/
+│   └── auth.ts              # Authentication helpers
+├── tests/                    # E2E test files
+│   ├── create-task.spec.ts
+│   ├── create-project-e2e-page.spec.ts
+│   ├── update-task-status.spec.ts
+│   └── ...
+└── README.md                # This file
 ```
 
-Keep this terminal running! The emulator must be running during tests.
+## Test Commands
 
-### Step 2: Build Your App
-
-```bash
-# In Terminal 2
-npm run build
-```
-
-### Step 3: Run E2E Tests
+### Run All E2E Tests
 
 ```bash
-# Playwright will automatically:
-# 1. Start the preview server (npm run preview)
-# 2. Open a browser
-# 3. Run the tests
-# 4. Show you what's happening
 npm run test:e2e
 ```
 
----
-
-## 🎬 Watch Tests Run (Headed Mode)
-
-To see the browser actually doing the actions:
+### Run with Visible Browser
 
 ```bash
 npm run test:e2e:headed
 ```
 
-This opens a visible browser window so you can watch:
-- Pages loading
-- Forms being filled
-- Buttons being clicked
-- Tasks being created
-- Everything happening in real-time!
-
----
-
-## 🐛 Debug Tests
-
-If a test fails, debug it interactively:
+### Debug Tests
 
 ```bash
 npm run test:e2e:debug
 ```
 
-This opens Playwright's debug UI where you can:
-- Step through tests line by line
-- See what the browser sees
-- Inspect elements
-- Pause and resume execution
-
----
-
-## 📝 Current E2E Tests
-
-### ✅ TM-COR-01: Create Task
-**File:** `e2e/tests/create-task.spec.ts`
-
-**What it tests:**
-- User logs in
-- Navigates to Tasks page
-- Clicks "Create Task" button
-- Fills in task form
-- Submits form
-- Verifies task appears in list
-
-**What you'll see:**
-- Browser opens
-- Login page loads
-- User types email/password
-- Clicks login
-- Tasks page loads
-- Dialog opens
-- Form gets filled
-- Task appears in list!
-
----
-
-### ✅ TM-COR-03: Change Task Status
-**File:** `e2e/tests/update-task-status.spec.ts`
-
-**What it tests:**
-- User creates or finds a task
-- Opens task details
-- Changes status from "To Do" to "In Progress"
-- Verifies status updates
-- Verifies success message appears
-
-**What you'll see:**
-- Task card appears
-- User clicks on task
-- Status dropdown changes
-- Save button clicked
-- Success message appears
-- Status updates in list!
-
----
-
-## 🔧 Configuration
-
-### playwright.config.ts
-
-The configuration file (`playwright.config.ts`) sets up:
-- **Base URL:** `http://localhost:4173` (Vite preview server)
-- **Browser:** Chromium (can add Firefox, Safari)
-- **Screenshots:** Taken on failure
-- **Videos:** Recorded on failure
-- **Emulator:** Automatically configured to use Firestore Emulator
-
-### Environment Variables
-
-The config automatically sets:
-```bash
-FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
-USE_FIREBASE_EMULATOR=true
-```
-
-This ensures your app connects to the emulator, not production!
-
----
-
-## 📊 Test Reports
-
-After running tests, view the HTML report:
+### View HTML Report
 
 ```bash
-npx playwright show-report
+npm run test:e2e:report
 ```
 
-This shows:
-- Which tests passed/failed
-- Screenshots of failures
-- Videos of test execution
+## Current E2E Tests
+
+### TM-COR-01: Create Task
+- **File:** `tests/create-task.spec.ts`
+- **Tests:** Task creation through UI
+- **Coverage:** Task form validation, success messages
+
+### TGO-COR-01: Create Project
+- **File:** `tests/create-project-e2e-page.spec.ts`
+- **Tests:** Project creation through E2E test page
+- **Coverage:** Project form validation, success messages
+
+### TM-COR-03: Change Task Status
+- **File:** `tests/update-task-status.spec.ts`
+- **Tests:** Task status updates through UI
+- **Coverage:** Status dropdown, save functionality
+
+### TM-COR-05: Task Recurrence
+- **File:** `tests/recurring-task.spec.ts`
+- **Tests:** Recurring task creation and calendar view
+- **Coverage:** Recurrence options, calendar integration
+
+### Project Management Workflow
+- **File:** `tests/project-management.spec.ts`
+- **Tests:** Complete project workflow (create → assign task → view)
+- **Coverage:** Project creation, task assignment, project detail view
+
+## Test Reports
+
+### Console Output
+
+E2E tests show results in terminal:
+```
+✓  14 passed (48.3s)
+✘  0 failed
+```
+
+### HTML Report
+
+View detailed HTML report:
+```bash
+npm run test:e2e:report
+```
+
+**Report Includes:**
+- Test results (pass/fail)
+- Screenshots on failure
+- Video recordings
 - Trace files for debugging
 
----
+**Location:** `playwright-report/` directory
 
-## 🎯 Example: What Happens During a Test
+## Writing E2E Tests
 
-Let's trace through `create-task.spec.ts`:
+### Basic Test Structure
 
 ```typescript
-test('should create a task through the UI', async ({ page }) => {
-  // 1. Browser opens and navigates to /login
-  await page.goto('/login')
-  
-  // 2. You'll see the login form appear
-  await page.fill('[name="email"]', 'test@example.com')
-  // Email field gets filled in the browser
-  
-  await page.fill('[name="password"]', 'password123')
-  // Password field gets filled
-  
-  await page.click('button[type="submit"]')
-  // Submit button gets clicked - you'll see it happen!
-  
-  // 3. App navigates to Tasks page
-  await page.goto('/tasks')
-  // Browser navigates to /tasks
-  
-  // 4. Create Task button gets clicked
-  await page.click('button:has-text("Create Task")')
-  // Dialog opens - you'll see it!
-  
-  // 5. Form gets filled
-  await page.fill('[name="title"]', 'E2E Test Task')
-  // Title field gets filled
-  
-  // 6. Submit button clicked
-  await page.click('button:has-text("Create")')
-  // Task gets created - data goes to Firestore Emulator!
-  
-  // 7. Verify task appears
-  await expect(page.locator('text=E2E Test Task')).toBeVisible()
-  // Task appears in the list - you'll see it!
+import { test, expect } from '@playwright/test'
+import { ensureTestUser, TEST_USERS } from '../helpers/auth'
+
+test.describe('TM-COR-01: Create Task', () => {
+  test.beforeEach(async ({ page }) => {
+    // Ensure test user exists
+    const user = TEST_USERS.real
+    await ensureTestUser(user.email, user.password, user.fullName, user.role)
+    
+    // Login
+    await page.goto('/login')
+    await page.fill('[name="email"]', user.email)
+    await page.fill('[name="password"]', user.password)
+    await page.click('button[type="submit"]')
+    await page.waitForURL(/\/(dashboard|tasks|$)/, { timeout: 15000 })
+  })
+
+  test('should create a task through the UI', async ({ page }) => {
+    await page.goto('/tasks')
+    await page.click('button:has-text("Create Task")')
+    await page.fill('[name="title"]', 'E2E Test Task')
+    await page.click('button:has-text("Create")')
+    await expect(page.locator('text=E2E Test Task')).toBeVisible()
+  })
 })
 ```
 
-**All of this happens in a real browser, and you can watch it!**
+### Best Practices
 
----
+1. **Use `data-testid` attributes** for reliable selectors
+2. **Wait for elements** before interaction
+3. **Use `force: true`** for clicks if element is intercepted
+4. **Handle async operations** properly
+5. **Clear data** between tests when needed
 
-## 🆚 E2E Tests vs Integration Tests
+## Troubleshooting
 
-### Integration Tests (Vitest + Firestore Emulator)
-- ✅ Fast (no browser)
-- ✅ Test backend logic
-- ✅ Test data validation
-- ❌ No UI interaction
-- ❌ No real user experience
+### Emulator Connection Issues
 
-### E2E Tests (Playwright + Browser)
-- ✅ Real browser interaction
-- ✅ Test complete user journeys
-- ✅ See actual UI behavior
-- ✅ Test user experience
-- ❌ Slower (browser overhead)
-- ❌ More complex setup
+**Error:** Tests not connecting to emulator
 
-**Use both:**
-- **Integration Tests** for backend/data logic
-- **E2E Tests** for user workflows
+**Solution:**
+1. Ensure emulators are running: `npm run emulator:start`
+2. Check both Firestore (8080) and Auth (9099) emulators are running
+3. Verify environment variables in `playwright.config.ts`
 
----
+### Element Not Found
 
-## 🎨 Tips for Writing E2E Tests
+**Error:** `Element not found` or `Timeout waiting for element`
 
-### 1. Use Data Attributes
-Add `data-testid` to your components:
+**Solution:**
+1. Increase wait timeouts
+2. Use `waitForSelector` before interactions
+3. Check if element has `data-testid` attribute
+4. Use `force: true` for clicks if needed
 
-```tsx
-<button data-testid="create-task-button">Create Task</button>
-```
+### Test Timeouts
 
-Then in tests:
+**Solution:** Increase test timeout:
 ```typescript
-await page.click('[data-testid="create-task-button"]')
+test.setTimeout(60000) // 60 seconds
 ```
 
-### 2. Wait for Elements
-Always wait for elements to appear:
+## Additional Resources
 
-```typescript
-await page.waitForSelector('[name="title"]', { timeout: 5000 })
-await page.fill('[name="title"]', 'Task Title')
-```
-
-### 3. Use Text Selectors Sparingly
-Text can change, but if needed:
-```typescript
-await page.click('text=Create Task')
-```
-
-### 4. Take Screenshots
-Playwright automatically takes screenshots on failure, but you can also:
-```typescript
-await page.screenshot({ path: 'screenshot.png' })
-```
-
----
-
-## 🚨 Troubleshooting
-
-### "Connection refused" to Firestore Emulator
-**Solution:** Make sure Firestore Emulator is running:
-```bash
-firebase emulators:start --only firestore
-```
-
-### "Cannot find module @playwright/test"
-**Solution:** Install Playwright:
-```bash
-npm install -D @playwright/test
-npx playwright install --with-deps chromium
-```
-
-### Tests are slow
-**Solution:** 
-- Use `headed: false` for faster runs
-- Run specific tests: `npx playwright test e2e/tests/create-task.spec.ts`
-- Use `--workers=1` to run sequentially
-
-### Browser doesn't open
-**Solution:** Use headed mode:
-```bash
-npm run test:e2e:headed
-```
-
----
-
-## 📚 Next Steps
-
-1. ✅ Run existing E2E tests
-2. [ ] Add more E2E tests for other user stories
-3. [ ] Create page objects for reusable components
-4. [ ] Add test fixtures for authentication
-5. [ ] Integrate into CI/CD pipeline
-
----
-
-## 🔗 Related Documentation
-
+- [Main Testing Guide](../../TESTING.md) - Comprehensive testing documentation
 - [Playwright Documentation](https://playwright.dev/)
-- [E2E Testing Setup Guide](../E2E_TESTING_SETUP.md)
-- [Comprehensive Testing Strategy](../COMPREHENSIVE_TESTING_STRATEGY.md)
-
----
-
-**Happy Testing! 🎉**
-
+- [E2E Testing Best Practices](https://playwright.dev/docs/best-practices)

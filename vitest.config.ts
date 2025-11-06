@@ -11,11 +11,11 @@ export default defineConfig({
     css: true,
     // Exclude E2E tests (they're run by Playwright)
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/*.e2e.spec.ts', '**/*.e2e.test.ts'],
-    // Optimize for faster execution
-    pool: 'forks',
+    // Run tests sequentially to avoid emulator conflicts
+    pool: 'threads',
     poolOptions: {
-      forks: {
-        singleFork: true,
+      threads: {
+        singleThread: true, // Run tests one at a time
       },
     },
     // Increase timeout to prevent issues with emulator timing

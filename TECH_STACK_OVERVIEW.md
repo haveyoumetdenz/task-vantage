@@ -51,8 +51,7 @@ A modern, full-stack task management application with team collaboration, projec
 - **ESLint** - JavaScript/TypeScript linting
 - **TypeScript ESLint** - TypeScript-specific linting rules
 - **React Hooks ESLint** - React hooks linting
-- **Lovable Tagger** - Component tagging for development
-
+- 
 ---
 
 ## 🎨 **UI Components & Libraries**

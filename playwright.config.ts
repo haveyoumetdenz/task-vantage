@@ -40,19 +40,19 @@ export default defineConfig({
 
   // Start preview server before running tests
   webServer: {
-    command: 'npm run preview',
+    command: 'npm run build:e2e && npm run preview',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    // Environment variables are set in build:e2e script (must be at build time for Vite)
     env: {
-      // Point app to Firestore Emulator during tests
+      // These are for runtime (if needed by preview server)
       FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
       USE_FIREBASE_EMULATOR: 'true',
-      // Enable E2E test page in preview mode
       VITE_E2E_TEST_MODE: 'true',
-      // Vite-specific environment variables
-      VITE_USE_FIREBASE_EMULATOR: 'true',
-      VITE_FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
+      // Auth Emulator (if needed)
+      VITE_AUTH_EMULATOR_HOST: '127.0.0.1:9099',
+      AUTH_EMULATOR_HOST: '127.0.0.1:9099',
     },
   },
 })

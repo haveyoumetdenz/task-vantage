@@ -16,7 +16,13 @@ describe('TM-COR-01 Create Task (Firestore Emulator)', () => {
       console.error(getEmulatorNotRunningMessage())
       throw new Error('Firestore Emulator is not running. Please start it with: npm run emulator:start')
     }
+  })
+
+  beforeEach(async () => {
+    // Clear tasks before each test to ensure isolation
     await clearTasks()
+    // Small delay to ensure cleanup is complete
+    await new Promise(resolve => setTimeout(resolve, 100))
   })
 
   afterAll(async () => {
@@ -26,20 +32,20 @@ describe('TM-COR-01 Create Task (Firestore Emulator)', () => {
   it('creates a valid task and can read it back', async () => {
     const id = await createTaskEmu({ title: 'Emu Task', priority: 5 })
     
-    // Wait a bit for emulator to commit
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // Wait longer for emulator to commit (emulator can be slow)
+    await new Promise(resolve => setTimeout(resolve, 1000))
     
     // Wait and retry until task is readable (emulator timing)
     let task: any
     let retries = 0
-    const maxRetries = 50 // Increased retries
+    const maxRetries = 100 // Significantly increased retries
     while (retries < maxRetries) {
       task = await getTaskByIdEmu(id)
       if (task.exists && task.data && task.data.title) {
         // Task found and readable
         break
       }
-      await new Promise(resolve => setTimeout(resolve, 200)) // Longer wait
+      await new Promise(resolve => setTimeout(resolve, 300)) // Longer wait between retries
       retries++
     }
     
@@ -54,7 +60,7 @@ describe('TM-COR-01 Create Task (Firestore Emulator)', () => {
     
     // Verify task exists by reading it back (no need to query all tasks)
     // This avoids RESOURCE_EXHAUSTED errors when collection is large
-  }, 60000) // Increase timeout to 60 seconds
+  }, 120000) // Increase timeout to 120 seconds
 
   it('rejects invalid task (empty title)', async () => {
     await expect(createTaskEmu({ title: '', priority: 5 })).rejects.toThrow()

@@ -1,73 +1,221 @@
-# Welcome to your Lovable project
+# Task Vantage
 
-## Project info
+A modern, full-stack task management application with team collaboration, project tracking, and analytics capabilities. Built with React, TypeScript, Firebase, and a comprehensive testing suite.
 
-**URL**: https://lovable.dev/projects/3f51ab17-f7bb-4b23-b626-7ec42b054ed6
+## Features
 
-## How can I edit this code?
+- **Task Management**: Create, assign, and track tasks with priorities, due dates, and statuses
+- **Project Management**: Organize tasks into projects with progress tracking
+- **Team Collaboration**: Role-based access control with team hierarchy support
+- **Recurring Tasks**: Create tasks that repeat on a schedule
+- **Calendar View**: Visual calendar interface for task and project deadlines
+- **Analytics & Reports**: Generate team performance reports and analytics
+- **Real-time Updates**: Live synchronization across all clients
+- **Notifications**: Task assignment and deadline notifications
+- **Activity Logs**: Track changes and comments on tasks and projects
 
-There are several ways of editing your application.
+## Prerequisites
 
-**Use Lovable**
+Before you begin, ensure you have the following installed:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3f51ab17-f7bb-4b23-b626-7ec42b054ed6) and start prompting.
+- **Node.js** (v18 or higher) - [Install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **npm** (comes with Node.js)
+- **Firebase CLI** - Install globally: `npm install -g firebase-tools`
 
-Changes made via Lovable will be committed automatically to this repo.
+## Installation
 
-**Use your preferred IDE**
+1. **Clone the repository**
+   ```bash
+   git clone <YOUR_GIT_URL>
+   cd task-vantage-main
+   ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+3. **Set up Firebase**
+   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+   - Install Firebase CLI: `npm install -g firebase-tools`
+   - Login to Firebase: `firebase login`
+   - Initialize Firebase (if not already done): `firebase init`
 
-Follow these steps:
+## Environment Setup
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+The application uses Firebase for backend services. For local development with emulators:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. **Start Firebase Emulators**
+   ```bash
+   npm run emulator:start
+   ```
+   This starts:
+   - Firestore Emulator on port 8080
+   - Auth Emulator on port 9099
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. **Environment Variables**
+   The application automatically connects to emulators when running in development mode.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## Running the Application
+
+### Development Server
+
+Start the development server with hot module replacement:
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Production Build
 
-**Use GitHub Codespaces**
+Build the application for production:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+npm run build
+```
 
-## What technologies are used for this project?
+Preview the production build:
 
-This project is built with:
+```bash
+npm run preview
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The preview server will be available at `http://localhost:4173`
 
-## How can I deploy this project?
+## Testing
 
-Simply open [Lovable](https://lovable.dev/projects/3f51ab17-f7bb-4b23-b626-7ec42b054ed6) and click on Share -> Publish.
+The project includes comprehensive testing with unit, integration, and E2E tests. See [TESTING.md](./TESTING.md) for detailed testing documentation.
 
-## Can I connect a custom domain to my Lovable project?
+### Quick Test Commands
 
-Yes, you can!
+- **Unit Tests**: `npm run test:run`
+- **Integration Tests**: `npm run test:emu` (requires emulator)
+- **E2E Tests**: `npm run test:e2e` (requires emulator)
+- **Coverage**: `npm run test:coverage`
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Firebase Emulators
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Start Emulators
+
+```bash
+npm run emulator:start
+```
+
+### Emulator Management
+
+- **Stop emulators**: `npm run emulator:stop`
+- **Check status**: `npm run emulator:status`
+- **Restart**: `npm run emulator:restart`
+
+### Emulator UI
+
+Access the Firebase Emulator UI at `http://localhost:4000` (if configured)
+
+## Project Structure
+
+```
+task-vantage-main/
+├── src/
+│   ├── components/      # Reusable UI components
+│   │   ├── auth/       # Authentication components
+│   │   ├── calendar/   # Calendar components
+│   │   ├── forms/      # Form components
+│   │   ├── layout/     # Layout components
+│   │   ├── reports/    # Analytics components
+│   │   ├── tasks/      # Task-specific components
+│   │   └── ui/         # Base UI components
+│   ├── contexts/       # React contexts
+│   ├── hooks/         # Custom hooks (Firebase data management)
+│   ├── integrations/  # External service integrations
+│   ├── pages/         # Page components
+│   ├── services/      # Service layer
+│   ├── test/          # Test utilities and setup
+│   └── utils/         # Utility functions
+├── e2e/               # E2E tests (Playwright)
+├── functions/         # Firebase Cloud Functions
+├── public/            # Static assets
+└── scripts/           # Utility scripts
+```
+
+## Technology Stack
+
+- **Frontend**: React 18.3.1, TypeScript 5.8.3, Vite 5.4.19
+- **UI**: Tailwind CSS, Radix UI, Shadcn/ui
+- **Backend**: Firebase 12.3.0 (Firestore, Auth, Functions)
+- **State Management**: TanStack Query, React Context
+- **Forms**: React Hook Form, Zod validation
+- **Testing**: Vitest, Playwright, React Testing Library
+- **Build Tool**: Vite with SWC compiler
+
+## Available Scripts
+
+### Development
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run build:dev` - Build in development mode
+- `npm run preview` - Preview production build
+
+### Testing
+- `npm run test` - Run tests in watch mode
+- `npm run test:run` - Run tests once
+- `npm run test:ui` - Run tests with UI
+- `npm run test:coverage` - Run tests with coverage
+- `npm run test:emu` - Run integration tests (requires emulator)
+- `npm run test:e2e` - Run E2E tests
+- `npm run test:e2e:report` - View E2E test report
+
+### Emulators
+- `npm run emulator:start` - Start Firebase emulators
+- `npm run emulator:stop` - Stop emulators
+- `npm run emulator:status` - Check emulator status
+- `npm run emulator:restart` - Restart emulators
+
+### Code Quality
+- `npm run lint` - Run ESLint
+
+## Deployment
+
+### Firebase Hosting
+
+1. **Build the application**
+   ```bash
+   npm run build
+   ```
+
+2. **Deploy to Firebase**
+   ```bash
+   firebase deploy --only hosting
+   ```
+
+### Firebase Functions
+
+Deploy Cloud Functions:
+
+```bash
+cd functions
+npm install
+cd ..
+firebase deploy --only functions
+```
+
+## Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Run tests: `npm run test:run && npm run test:emu`
+4. Commit your changes
+5. Push to your branch
+6. Create a Pull Request
+
+## Documentation
+
+- [Testing Guide](./TESTING.md) - Comprehensive testing documentation
+- [Architecture Diagrams](./C4_ARCHITECTURE_DIAGRAMS.md) - System architecture
+- [RBAC System](./RBAC_SYSTEM.md) - Role-based access control
+- [Tech Stack Overview](./TECH_STACK_OVERVIEW.md) - Detailed technology stack
+
+## License
+
+This project is private and proprietary.

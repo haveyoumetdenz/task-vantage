@@ -12,7 +12,6 @@ import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { toast } from 'sonner'
 import { MFALoginDialog } from './MFALoginDialog'
-// Removed Supabase import - using Firebase now
 
 const authSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

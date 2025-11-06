@@ -18,7 +18,13 @@ describe('TGO-COR-03: Move Tasks (Firestore Emulator)', () => {
       console.error(getEmulatorNotRunningMessage())
       throw new Error('Firestore Emulator is not running. Please start it with: npm run emulator:start')
     }
+  })
+
+  beforeEach(async () => {
+    // Clear all data before each test to ensure isolation
     await clearAll()
+    // Small delay to ensure cleanup is complete
+    await new Promise(resolve => setTimeout(resolve, 100))
   })
 
   it('should move a task to a project', async () => {
@@ -29,14 +35,15 @@ describe('TGO-COR-03: Move Tasks (Firestore Emulator)', () => {
       priority: 5 
     })
 
-    await new Promise(resolve => setTimeout(resolve, 200))
+    // Wait longer for emulator to commit (emulator can be slow)
+    await new Promise(resolve => setTimeout(resolve, 1000))
 
     // Verify task has no project initially - wait longer for emulator consistency
     let task = await getTaskByIdEmu(taskId)
     let retries = 0
-    const maxRetries = 30 // Increased retries
+    const maxRetries = 100 // Significantly increased retries
     while (!task.exists && retries < maxRetries) {
-      await new Promise(resolve => setTimeout(resolve, 150)) // Longer wait
+      await new Promise(resolve => setTimeout(resolve, 300)) // Longer wait between retries
       task = await getTaskByIdEmu(taskId)
       retries++
     }

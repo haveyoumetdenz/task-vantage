@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Mail, Calendar, Shield } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-// Removed Supabase import - using Firebase now
 import { toast } from "sonner";
 
 export default function Profile() {

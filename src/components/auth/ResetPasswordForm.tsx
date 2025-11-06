@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
-// Removed Supabase import - using Firebase now
 
 const resetPasswordSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),

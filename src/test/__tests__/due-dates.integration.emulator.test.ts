@@ -16,7 +16,13 @@ describe('DST-COR-01: Attach/Update Due Dates (Firestore Emulator)', () => {
       console.error(getEmulatorNotRunningMessage())
       throw new Error('Firestore Emulator is not running. Please start it with: npm run emulator:start')
     }
+  })
+
+  beforeEach(async () => {
+    // Clear tasks before each test to ensure isolation
     await clearTasks()
+    // Small delay to ensure cleanup is complete
+    await new Promise(resolve => setTimeout(resolve, 100))
   })
 
   it('should add due date to task', async () => {

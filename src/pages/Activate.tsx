@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-// Removed Supabase import - using Firebase now
 import { toast } from "sonner";
 import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
 
@@ -28,7 +27,7 @@ export default function Activate() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // Get URL parameters for Supabase invitation flow
+  // Get URL parameters for invitation flow
   const token = searchParams.get('token');
   const type = searchParams.get('type');
   const tokenHash = searchParams.get('token_hash');
@@ -60,7 +59,7 @@ export default function Activate() {
     }
 
     try {
-      // Verify the invitation token with Supabase
+      // Verify the invitation token
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash || '',
         type: 'invite'

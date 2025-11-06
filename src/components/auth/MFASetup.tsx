@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Shield, ShieldCheck, QrCode, Smartphone } from 'lucide-react'
-// Removed Supabase import - using Firebase now
 
 const mfaVerifySchema = z.object({
   code: z.string().length(6, 'Code must be exactly 6 digits').regex(/^\d+$/, 'Code must contain only numbers'),

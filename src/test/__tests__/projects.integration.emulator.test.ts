@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { collection, getDocs, addDoc, updateDoc, doc, query, where } from 'firebase/firestore'
+import { collection, getDocs, addDoc, updateDoc, doc, query, where, getDoc } from 'firebase/firestore'
 import { db, clearCollection } from '@/test/emulatorDb'
 import { createProjectEmu, getProjectByIdEmu } from '@/services/projects.emu'
 import { calculateProjectProgress, type Task } from '@/utils/projectValidation'
