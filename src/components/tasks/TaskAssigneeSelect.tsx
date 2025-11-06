@@ -22,9 +22,10 @@ interface TaskAssigneeSelectProps {
   value: string[]
   onChange: (value: string[]) => void
   className?: string
+  disabled?: boolean
 }
 
-export const TaskAssigneeSelect = ({ value, onChange, className }: TaskAssigneeSelectProps) => {
+export const TaskAssigneeSelect = ({ value, onChange, className, disabled = false }: TaskAssigneeSelectProps) => {
   const [open, setOpen] = React.useState(false)
   const { teamMembers, loading } = useFirebaseTeamMembers()
 
@@ -32,6 +33,7 @@ export const TaskAssigneeSelect = ({ value, onChange, className }: TaskAssigneeS
   const availableMembers = teamMembers.filter(member => !value.includes(member.userId))
 
   const handleSelect = (memberId: string) => {
+    if (disabled) return
     const newValue = value.includes(memberId)
       ? value.filter(id => id !== memberId)
       : [...value, memberId]
@@ -39,6 +41,7 @@ export const TaskAssigneeSelect = ({ value, onChange, className }: TaskAssigneeS
   }
 
   const handleRemove = (memberId: string) => {
+    if (disabled) return
     onChange(value.filter(id => id !== memberId))
   }
 
@@ -51,7 +54,7 @@ export const TaskAssigneeSelect = ({ value, onChange, className }: TaskAssigneeS
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
-            disabled={loading}
+            disabled={loading || disabled}
           >
             {loading ? (
               'Loading team members...'
@@ -110,10 +113,12 @@ export const TaskAssigneeSelect = ({ value, onChange, className }: TaskAssigneeS
                 </AvatarFallback>
               </Avatar>
               <span className="text-xs">{member.fullName}</span>
-              <X
-                className="h-3 w-3 cursor-pointer hover:text-destructive"
-                onClick={() => handleRemove(member.userId)}
-              />
+              {!disabled && (
+                <X
+                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                  onClick={() => handleRemove(member.userId)}
+                />
+              )}
             </Badge>
           ))}
         </div>

@@ -30,8 +30,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { deactivateUserAccount, permanentlyDeleteUserAccount, reactivateUserAccount, getAccountStatus } from '@/utils/accountManagement'
 import { useFirebaseProfile } from '@/hooks/useFirebaseProfile'
 
+// Base schema - will be validated dynamically based on account status
 const accountManagementSchema = z.object({
-  action: z.enum(['deactivate', 'reactivate', 'delete']),
+  action: z.string(),
   reason: z.string().min(1, 'Reason is required'),
   confirmAction: z.boolean().refine(val => val === true, 'You must confirm this action'),
 })
@@ -58,19 +59,56 @@ export const AccountManagementDialog = ({
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
   const { profile } = useFirebaseProfile()
 
+  // Determine available actions based on account status
+  const getAvailableActions = (): ('deactivate' | 'reactivate' | 'delete')[] => {
+    if (!accountStatus) return ['deactivate', 'delete'] // Default if status not loaded yet
+    
+    const isActive = accountStatus.isActive !== false && !accountStatus.deactivatedAt
+    
+    if (isActive) {
+      // Active account: can deactivate or delete
+      return ['deactivate', 'delete']
+    } else {
+      // Deactivated account: can reactivate or delete
+      return ['reactivate', 'delete']
+    }
+  }
+
+  const availableActions = getAvailableActions()
+
   const form = useForm<AccountManagementFormData>({
     resolver: zodResolver(accountManagementSchema),
     defaultValues: {
-      action: 'deactivate',
+      action: availableActions[0],
       reason: '',
       confirmAction: false,
     },
   })
 
+  // Reset form when account status changes
+  React.useEffect(() => {
+    if (accountStatus && open) {
+      const isActive = accountStatus.isActive !== false && !accountStatus.deactivatedAt
+      const defaultAction = isActive ? 'deactivate' : 'reactivate'
+      const action = availableActions.includes(defaultAction) ? defaultAction : availableActions[0]
+      form.reset({
+        action,
+        reason: '',
+        confirmAction: false,
+      })
+    }
+  }, [accountStatus, open, availableActions, form])
+
   // Load account status when dialog opens
   React.useEffect(() => {
     if (open && targetUserId) {
       loadAccountStatus()
+      // Reset form when dialog opens
+      form.reset({
+        action: availableActions[0],
+        reason: '',
+        confirmAction: false,
+      })
     }
   }, [open, targetUserId])
 
@@ -86,6 +124,15 @@ export const AccountManagementDialog = ({
   const onSubmit = async (data: AccountManagementFormData) => {
     if (!profile?.userId) {
       setResult({ success: false, message: 'You must be logged in to perform this action' })
+      return
+    }
+
+    // Validate that the action is allowed for the current account status
+    if (!availableActions.includes(data.action as any)) {
+      setResult({ 
+        success: false, 
+        message: `This action is not available for ${accountStatus?.isActive !== false && !accountStatus?.deactivatedAt ? 'active' : 'deactivated'} accounts.` 
+      })
       return
     }
 
@@ -203,24 +250,30 @@ export const AccountManagementDialog = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="deactivate">
-                        <div className="flex items-center gap-2">
-                          <UserX className="h-4 w-4" />
-                          Deactivate Account
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="reactivate">
-                        <div className="flex items-center gap-2">
-                          <UserCheck className="h-4 w-4" />
-                          Reactivate Account
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="delete">
-                        <div className="flex items-center gap-2">
-                          <Trash2 className="h-4 w-4" />
-                          Permanently Delete Account
-                        </div>
-                      </SelectItem>
+                      {availableActions.includes('deactivate') && (
+                        <SelectItem value="deactivate">
+                          <div className="flex items-center gap-2">
+                            <UserX className="h-4 w-4" />
+                            Deactivate Account
+                          </div>
+                        </SelectItem>
+                      )}
+                      {availableActions.includes('reactivate') && (
+                        <SelectItem value="reactivate">
+                          <div className="flex items-center gap-2">
+                            <UserCheck className="h-4 w-4" />
+                            Reactivate Account
+                          </div>
+                        </SelectItem>
+                      )}
+                      {availableActions.includes('delete') && (
+                        <SelectItem value="delete">
+                          <div className="flex items-center gap-2">
+                            <Trash2 className="h-4 w-4" />
+                            Permanently Delete Account
+                          </div>
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

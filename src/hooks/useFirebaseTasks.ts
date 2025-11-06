@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast'
 import { updateProjectProgress } from '@/utils/projectProgress'
 import { validateTaskData, sanitizeTaskData } from '@/utils/taskValidation'
 import { createActivityLogEntry } from '@/utils/activityLog'
+import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
 
 export interface Task {
   id: string
@@ -335,12 +336,28 @@ export const useFirebaseTasks = (projectId?: string) => {
       const { id, ...updateData } = taskData
       const taskRef = doc(db, 'tasks', id)
       
+      const currentTask = tasks.find(t => t.id === id)
+      
+      // Check if user is trying to reassign tasks (change assignees)
+      if (updateData.assigneeIds && currentTask) {
+        const oldAssignees = currentTask.assigneeIds || []
+        const newAssignees = updateData.assigneeIds || []
+        const assigneesChanged = JSON.stringify(oldAssignees.sort()) !== JSON.stringify(newAssignees.sort())
+        
+        if (assigneesChanged && !canReassignTasks()) {
+          toast({
+            title: "Permission Denied",
+            description: "Only Managers, Directors, and Senior Management can reassign tasks.",
+            variant: "destructive",
+          })
+          return null
+        }
+      }
+      
       // Filter out undefined values to avoid Firestore errors
       const filteredUpdateData = Object.fromEntries(
         Object.entries(updateData).filter(([_, value]) => value !== undefined)
       )
-      
-      const currentTask = tasks.find(t => t.id === id)
       
       await updateDoc(taskRef, {
         ...filteredUpdateData,

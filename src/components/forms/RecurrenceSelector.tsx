@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { ChevronDown, Repeat, Calendar as CalendarIcon } from 'lucide-react'
@@ -57,13 +57,16 @@ export function RecurrenceSelector({ value, onChange, disabled = false }: Recurr
     onChange({
       ...value,
       end_date: date,
+      max_occurrences: undefined, // Clear max_occurrences when setting end_date
     })
   }
 
   const handleMaxOccurrencesChange = (maxOccurrences: number) => {
+    setEndDate(undefined) // Clear end_date when setting max_occurrences
     onChange({
       ...value,
       max_occurrences: Math.max(1, maxOccurrences),
+      end_date: undefined,
     })
   }
 
@@ -141,77 +144,81 @@ export function RecurrenceSelector({ value, onChange, disabled = false }: Recurr
             </div>
 
             <div className="space-y-2">
-              <Label>End Condition (Optional)</Label>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="endDate"
-                    checked={!!endDate}
-                    onCheckedChange={(checked) => {
-                      if (!checked) {
-                        setEndDate(undefined)
-                        onChange({
-                          ...value,
-                          end_date: undefined,
-                        })
-                      }
-                    }}
-                  />
-                  <Label htmlFor="endDate" className="text-sm">
-                    End by date
-                  </Label>
-                </div>
-                
-                {endDate && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(endDate, 'PPP')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={handleEndDateChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="maxOccurrences"
-                    checked={!!value?.max_occurrences}
-                    onCheckedChange={(checked) => {
-                      if (!checked) {
-                        onChange({
-                          ...value,
-                          max_occurrences: undefined,
-                        })
-                      }
-                    }}
-                  />
-                  <Label htmlFor="maxOccurrences" className="text-sm">
-                    End after
-                  </Label>
-                </div>
-                
-                {value?.max_occurrences && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Input
-                      type="number"
-                      min="1"
-                      value={value.max_occurrences}
-                      onChange={(e) => handleMaxOccurrencesChange(parseInt(e.target.value) || 1)}
-                      className="w-20 min-w-[60px]"
-                    />
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">occurrences</span>
+              <Label>End Condition *</Label>
+              <RadioGroup
+                value={endDate ? 'date' : value?.max_occurrences ? 'occurrences' : ''}
+                onValueChange={(selected) => {
+                  if (selected === 'date') {
+                    // Set a default end date (30 days from now)
+                    const defaultEndDate = new Date()
+                    defaultEndDate.setDate(defaultEndDate.getDate() + 30)
+                    setEndDate(defaultEndDate)
+                    onChange({
+                      ...value,
+                      end_date: defaultEndDate,
+                      max_occurrences: undefined, // Clear max_occurrences when selecting date
+                    })
+                  } else if (selected === 'occurrences') {
+                    // Set a default max occurrences (10)
+                    setEndDate(undefined) // Clear end_date when selecting occurrences
+                    onChange({
+                      ...value,
+                      max_occurrences: 10,
+                      end_date: undefined,
+                    })
+                  }
+                }}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="date" id="endDate" />
+                    <Label htmlFor="endDate" className="text-sm cursor-pointer font-normal">
+                      End by date
+                    </Label>
                   </div>
-                )}
-              </div>
+                  
+                  {endDate && (
+                    <div className="ml-6">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(endDate, 'PPP')}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={endDate}
+                            onSelect={handleEndDateChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="occurrences" id="maxOccurrences" />
+                    <Label htmlFor="maxOccurrences" className="text-sm cursor-pointer font-normal">
+                      End after
+                    </Label>
+                  </div>
+                  
+                  {value?.max_occurrences && (
+                    <div className="ml-6 flex items-center gap-2 flex-wrap">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={value.max_occurrences}
+                        onChange={(e) => handleMaxOccurrencesChange(parseInt(e.target.value) || 1)}
+                        className="w-20 min-w-[60px]"
+                      />
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">occurrences</span>
+                    </div>
+                  )}
+                </div>
+              </RadioGroup>
             </div>
           </div>
 

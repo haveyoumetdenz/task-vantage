@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { useToast } from '@/hooks/use-toast'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Loader2, ArrowLeft } from 'lucide-react'
 
 const forgotPasswordSchema = z.object({
@@ -19,10 +19,10 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 
 export const ForgotPasswordForm = () => {
-  const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [emailSent, setEmailSent] = useState(false)
+  const { resetPassword } = useAuth()
   const { toast } = useToast()
 
   const form = useForm<ForgotPasswordFormData>({
@@ -37,48 +37,39 @@ export const ForgotPasswordForm = () => {
     setError(null)
 
     try {
-      // Generate token and hash it
-      const token = crypto.randomUUID();
-      const encoder = new TextEncoder();
-      const data_encoded = encoder.encode(token);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data_encoded);
-      const tokenHash = Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+      // Use Firebase's sendPasswordResetEmail
+      const { error } = await resetPassword(data.email)
 
-      // Send password reset email via edge function
-      // The edge function will handle checking if the user exists
-      await supabase.functions.invoke('send-password-reset', {
-        body: {
-          email: data.email,
-          token,
-        }
-      });
+      if (error) {
+        // Don't reveal if email exists for security
+        // Firebase will handle this gracefully
+        console.error('Password reset error:', error)
+        setError('Failed to send reset email. Please try again.')
+        toast({
+          title: "Error",
+          description: "Failed to send reset email. Please try again.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
 
-      // Show success message and redirect to reset password page
+      // Show success message
+      setEmailSent(true)
       toast({
-        title: "Reset code sent!",
-        description: "Check your email for the reset code, then enter it on the next page.",
-      });
-      
-      // Redirect to reset password page after a short delay
-      setTimeout(() => {
-        navigate('/reset-password');
-      }, 1500);
+        title: "Reset link sent!",
+        description: "Check your email for the password reset link. Click the link to reset your password.",
+      })
     } catch (error: any) {
-      // Show success for security, but log error
-      console.error('Password reset error:', error);
+      console.error('Password reset error:', error)
+      setError('Failed to send reset email. Please try again.')
       toast({
-        title: "Reset code sent!",
-        description: "Check your email for the reset code, then enter it on the next page.",
-      });
-      
-      // Redirect to reset password page after a short delay even on error for security
-      setTimeout(() => {
-        navigate('/reset-password');
-      }, 1500);
+        title: "Error",
+        description: "Failed to send reset email. Please try again.",
+        variant: "destructive",
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 

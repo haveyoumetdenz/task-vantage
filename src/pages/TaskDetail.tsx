@@ -72,7 +72,7 @@ export default function TaskDetail() {
   const { tasks, updateTask, deleteTask } = useFirebaseTasks()
   const { teamTasks } = useFirebaseTeamHierarchyTasks()
   const { projects } = useFirebaseProjects()
-  const { canEditTask, profile } = useFirebaseRBAC()
+  const { canEditTask, canReassignTasks, profile } = useFirebaseRBAC()
   
   const [task, setTask] = useState<Task | null>(null)
   
@@ -391,11 +391,19 @@ export default function TaskDetail() {
               <div>
                 <label className="text-sm font-medium">Assignees</label>
                 {isEditing ? (
-                  <TaskAssigneeSelect
-                    value={editData.assignee_ids}
-                    onChange={(value) => setEditData({ ...editData, assignee_ids: value })}
-                    className="mt-1"
-                  />
+                  <div>
+                    <TaskAssigneeSelect
+                      value={editData.assignee_ids}
+                      onChange={(value) => setEditData({ ...editData, assignee_ids: value })}
+                      className="mt-1"
+                      disabled={!canReassignTasks()}
+                    />
+                    {!canReassignTasks() && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Only Managers, Directors, and Senior Management can reassign tasks.
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div className="mt-1">
                     {task.assigneeIds && task.assigneeIds.length > 0 ? (

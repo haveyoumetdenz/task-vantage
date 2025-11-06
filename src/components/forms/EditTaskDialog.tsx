@@ -37,6 +37,7 @@ import { RecurrenceSelector } from '@/components/forms/RecurrenceSelector'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useFirebaseTasks, Task, UpdateTaskData } from '@/hooks/useFirebaseTasks'
 import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
+import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
 
 const editTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -67,6 +68,7 @@ export const EditTaskDialog = ({ open, onOpenChange, task }: EditTaskDialogProps
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { updateTask } = useFirebaseTasks()
   const { projects } = useFirebaseProjects()
+  const { canReassignTasks } = useFirebaseRBAC()
 
   const form = useForm<EditTaskFormData>({
     resolver: zodResolver(editTaskSchema),
@@ -260,22 +262,28 @@ export const EditTaskDialog = ({ open, onOpenChange, task }: EditTaskDialogProps
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="assignee_ids"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assignees</FormLabel>
-                  <FormControl>
-                    <TaskAssigneeSelect
-                      value={field.value || []}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="assignee_ids"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assignees</FormLabel>
+                    <FormControl>
+                      <TaskAssigneeSelect
+                        value={field.value || []}
+                        onChange={field.onChange}
+                        disabled={!canReassignTasks()}
+                      />
+                    </FormControl>
+                    {!canReassignTasks() && (
+                      <p className="text-xs text-muted-foreground">
+                        Only Managers, Directors, and Senior Management can reassign tasks.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             <FormField
               control={form.control}

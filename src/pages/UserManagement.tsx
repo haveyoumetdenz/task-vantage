@@ -102,9 +102,12 @@ export default function UserManagement() {
           deactivatedAt = undefined
         }
         
-        // Map team name based on teamId
+        // Map team name based on teamId or role
         let teamName = 'No Team'
-        if (data.teamId) {
+        // Senior Management should show as "Senior Management" team
+        if (data.role === 'Senior Management') {
+          teamName = 'Senior Management'
+        } else if (data.teamId) {
           switch (data.teamId) {
             case 'hr':
               teamName = 'HR'
@@ -114,6 +117,9 @@ export default function UserManagement() {
               break
             case 'engineering-2':
               teamName = 'Engineering 2'
+              break
+            case 'senior-management':
+              teamName = 'Senior Management'
               break
             default:
               teamName = data.teamId

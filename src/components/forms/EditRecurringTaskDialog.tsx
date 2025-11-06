@@ -36,6 +36,7 @@ import { PrioritySelector } from '@/components/forms/PrioritySelector'
 import { RecurrenceSelector } from '@/components/forms/RecurrenceSelector'
 import { useFirebaseTasks, Task, UpdateTaskData } from '@/hooks/useFirebaseTasks'
 import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
+import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
 
 const editRecurringTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -67,6 +68,7 @@ export const EditRecurringTaskDialog = ({ open, onOpenChange, task }: EditRecurr
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { updateTask } = useFirebaseTasks()
   const { projects } = useFirebaseProjects()
+  const { canReassignTasks } = useFirebaseRBAC()
   
   // Debug: Log when dialog opens
   console.log('EditRecurringTaskDialog rendered - open:', open, 'task:', task?.title, 'isRecurring:', task?.isRecurring)
@@ -292,22 +294,28 @@ export const EditRecurringTaskDialog = ({ open, onOpenChange, task }: EditRecurr
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="assignee_ids"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assignees</FormLabel>
-                  <FormControl>
-                    <TaskAssigneeSelect
-                      value={field.value || []}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="assignee_ids"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assignees</FormLabel>
+                    <FormControl>
+                      <TaskAssigneeSelect
+                        value={field.value || []}
+                        onChange={field.onChange}
+                        disabled={!canReassignTasks()}
+                      />
+                    </FormControl>
+                    {!canReassignTasks() && (
+                      <p className="text-xs text-muted-foreground">
+                        Only Managers, Directors, and Senior Management can reassign tasks.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             {/* Due Date and Time - Required for Recurring Tasks */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

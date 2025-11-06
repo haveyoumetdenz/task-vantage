@@ -36,6 +36,7 @@ import { PrioritySelector } from '@/components/forms/PrioritySelector'
 import { RecurrenceSelector } from '@/components/forms/RecurrenceSelector'
 import { useFirebaseTasks, CreateTaskData } from '@/hooks/useFirebaseTasks'
 import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
+import { useAuth } from '@/contexts/FirebaseAuthContext'
 
 const createRecurringTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -46,16 +47,19 @@ const createRecurringTaskSchema = z.object({
     required_error: 'Start date is required for recurring tasks',
   }),
   start_time: z.string().min(1, 'Start time is required'),
-  end_date: z.date({
-    required_error: 'End date is required for recurring tasks',
-  }),
-  end_time: z.string().min(1, 'End time is required'),
   project_id: z.string().optional(),
   assignee_ids: z.array(z.string()).optional(),
   recurrence: z.object({
     frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
     interval: z.number().min(1).default(1),
+    end_date: z.date().optional(),
     max_occurrences: z.number().min(1).optional(),
+  }).refine((data) => {
+    // At least one end condition must be provided
+    return !!(data.end_date || data.max_occurrences)
+  }, {
+    message: 'Please select an end condition (End by date or End after)',
+    path: ['recurrence'],
   }),
 })
 
@@ -75,6 +79,7 @@ export const CreateRecurringTaskDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { createTask } = useFirebaseTasks()
   const { projects } = useFirebaseProjects()
+  const { user } = useAuth()
 
   const form = useForm<CreateRecurringTaskFormData>({
     resolver: zodResolver(createRecurringTaskSchema),
@@ -85,17 +90,25 @@ export const CreateRecurringTaskDialog = ({
       priority: 5,
       start_date: undefined,
       start_time: '09:00',
-      end_date: undefined,
-      end_time: '17:00',
       project_id: 'no-project',
       assignee_ids: [],
       recurrence: {
         frequency: 'daily',
         interval: 1,
+        end_date: undefined,
         max_occurrences: undefined,
       },
     },
   })
+
+  // Auto-populate assignees when form opens (creator is always assigned)
+  useEffect(() => {
+    if (open && user?.uid) {
+      const autoAssignees = [user.uid] // Always include creator
+      form.setValue('assignee_ids', autoAssignees)
+      console.log('🔧 Pre-populating recurring task assignees:', autoAssignees)
+    }
+  }, [open, user?.uid, form])
 
   // Set default project when it changes
   useEffect(() => {
@@ -114,10 +127,16 @@ export const CreateRecurringTaskDialog = ({
     const [startHours, startMinutes] = data.start_time.split(':').map(Number)
     startDateTime.setHours(startHours, startMinutes, 0, 0)
     
-    // Combine end date and time for the last occurrence
-    const endDateTime = new Date(data.end_date)
-    const [endHours, endMinutes] = data.end_time.split(':').map(Number)
-    endDateTime.setHours(endHours, endMinutes, 0, 0)
+    // Auto-assignment logic - always include creator
+    let finalAssigneeIds = data.assignee_ids || []
+    
+    // Always add the creator
+    if (user?.uid && !finalAssigneeIds.includes(user.uid)) {
+      finalAssigneeIds.push(user.uid)
+      console.log('🔧 Auto-assigning creator to recurring task:', user.uid)
+    }
+    
+    console.log('🔧 Final recurring task assignee IDs:', finalAssigneeIds)
     
     const taskData: CreateTaskData = {
       title: data.title,
@@ -126,12 +145,12 @@ export const CreateRecurringTaskDialog = ({
       priority: data.priority,
       dueDate: startDateTime.toISOString(), // Use start date as the due date for the first occurrence
       projectId: data.project_id && data.project_id !== 'no-project' ? data.project_id : undefined,
-      assigneeIds: data.assignee_ids && data.assignee_ids.length > 0 ? data.assignee_ids : undefined,
+      assigneeIds: finalAssigneeIds,
       isRecurring: true,
       recurrence: {
         frequency: data.recurrence.frequency,
         interval: data.recurrence.interval,
-        endDate: format(data.end_date, 'yyyy-MM-dd'), // Use the end date from the form
+        ...(data.recurrence.end_date && { endDate: format(data.recurrence.end_date, 'yyyy-MM-dd') }),
         ...(data.recurrence.max_occurrences && { maxOccurrences: data.recurrence.max_occurrences }),
       },
     }
@@ -271,7 +290,7 @@ export const CreateRecurringTaskDialog = ({
               name="assignee_ids"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assignees (Optional)</FormLabel>
+                  <FormLabel>Assignees</FormLabel>
                   <FormControl>
                     <TaskAssigneeSelect
                       value={field.value || []}
@@ -279,7 +298,7 @@ export const CreateRecurringTaskDialog = ({
                     />
                   </FormControl>
                   <p className="text-sm text-muted-foreground">
-                    Leave blank if there are no team members to assign
+                    You are automatically assigned as the creator. Add additional team members if needed.
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -352,68 +371,6 @@ export const CreateRecurringTaskDialog = ({
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="end_date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>End Date *</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick end date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) => date < new Date()}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="end_time"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>End Time *</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            type="time"
-                            className="pl-10"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
             </div>
 
             {/* Recurrence Settings */}

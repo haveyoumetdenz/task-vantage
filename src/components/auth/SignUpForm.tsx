@@ -37,6 +37,21 @@ type SignUpFormData = z.infer<typeof signUpSchema>
 export const SignUpForm = () => {
   const [searchParams] = useSearchParams()
   const invitationToken = searchParams.get('invitation')
+  const navigate = useNavigate()
+  
+  const { toast } = useToast()
+  
+  // Redirect to login if no invitation token
+  useEffect(() => {
+    if (!invitationToken) {
+      toast({
+        title: "Signup requires invitation",
+        description: "Please contact your administrator for an invitation link.",
+        variant: "destructive",
+      })
+      navigate('/login')
+    }
+  }, [invitationToken, navigate, toast])
   
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -53,8 +68,6 @@ export const SignUpForm = () => {
     console.log('Teams loading state:', { teams, teamsLoading, teamsCount: teams.length })
   }, [teams, teamsLoading])
   const { signUp } = useAuth()
-  const { toast } = useToast()
-  const navigate = useNavigate()
 
   const form = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),

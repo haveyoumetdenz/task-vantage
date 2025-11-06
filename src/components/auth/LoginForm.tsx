@@ -116,11 +116,7 @@ export const LoginForm = () => {
           </div>
           <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
             <nav className="flex items-center space-x-2">
-              <Link to="/signup">
-                <Button variant="ghost" className="text-sm">
-                  New here? Sign Up
-                </Button>
-              </Link>
+              {/* Signup link removed - users must be invited */}
             </nav>
           </div>
         </div>
@@ -212,12 +208,7 @@ export const LoginForm = () => {
                 >
                   Forgot your password?
                 </Link>
-                <div>
-                  <span className="text-sm text-muted-foreground">Don't have an account? </span>
-                  <Link to="/signup" className="text-sm text-primary hover:underline">
-                    Sign up
-                  </Link>
-                </div>
+                {/* Signup link removed - users must be invited */}
               </div>
             </form>
           </Form>

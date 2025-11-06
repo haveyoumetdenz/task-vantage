@@ -28,7 +28,7 @@ import { db, auth } from '@/integrations/firebase/client'
 import { collection, addDoc, query, where, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
-import { sendPasswordResetEmail } from 'firebase/auth'
+import { sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth'
 
 const inviteUserSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -50,6 +50,8 @@ export const InviteUserDialog = ({
 }: InviteUserDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string; invitationLink?: string } | null>(null)
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false)
+  const [emailExists, setEmailExists] = useState<boolean | null>(null)
   const { teams, loading: teamsLoading } = useFirebaseTeams()
   const { profile } = useFirebaseRBAC()
   const { user } = useAuth()
@@ -70,8 +72,69 @@ export const InviteUserDialog = ({
     if (open) {
       form.reset()
       setResult(null)
+      setEmailExists(null)
     }
   }, [open, form])
+
+  // Check if email exists as user types
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes('@')) {
+      setEmailExists(null)
+      return
+    }
+
+    setIsCheckingEmail(true)
+    try {
+      // Check Firestore profiles
+      const profilesRef = collection(db, 'profiles')
+      const emailQuery = query(profilesRef, where('email', '==', email.toLowerCase()))
+      const emailSnapshot = await getDocs(emailQuery)
+      const existsInProfiles = !emailSnapshot.empty
+
+      // Check Firebase Auth
+      let existsInAuth = false
+      try {
+        const authMethods = await fetchSignInMethodsForEmail(auth, email.toLowerCase())
+        existsInAuth = authMethods.length > 0
+      } catch (authError: any) {
+        // If auth check fails (e.g., 400 error), assume user doesn't exist in Auth
+        console.log('Could not check Firebase Auth for email:', authError.message)
+        existsInAuth = false
+      }
+
+      const exists = existsInProfiles || existsInAuth
+      setEmailExists(exists)
+
+      if (exists) {
+        form.setError('email', {
+          type: 'manual',
+          message: 'A user with this email already exists. Please use a different email.',
+        })
+      } else {
+        form.clearErrors('email')
+      }
+    } catch (error) {
+      console.error('Error checking email:', error)
+      setEmailExists(null)
+    } finally {
+      setIsCheckingEmail(false)
+    }
+  }
+
+  // Watch email field for changes
+  const watchedEmail = form.watch('email')
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (watchedEmail) {
+        checkEmailExists(watchedEmail)
+      } else {
+        setEmailExists(null)
+        form.clearErrors('email')
+      }
+    }, 500) // Debounce for 500ms
+
+    return () => clearTimeout(timeoutId)
+  }, [watchedEmail])
 
   const onSubmit = async (data: InviteUserFormData) => {
     if (!user || !profile?.userId) {
@@ -79,6 +142,16 @@ export const InviteUserDialog = ({
       return
     }
 
+    // Check if email exists before submitting
+    if (emailExists === true) {
+      setResult({
+        success: false,
+        message: 'A user with this email already exists. Please use a different email address.',
+      })
+      return
+    }
+
+    // Double-check if email exists (in case validation didn't run)
     setIsSubmitting(true)
     setResult(null)
 
@@ -87,58 +160,33 @@ export const InviteUserDialog = ({
       const profilesRef = collection(db, 'profiles')
       const emailQuery = query(profilesRef, where('email', '==', data.email.toLowerCase()))
       const emailSnapshot = await getDocs(emailQuery)
+      const existsInProfiles = !emailSnapshot.empty
 
-      const userExists = !emailSnapshot.empty
+      // Check Firebase Auth
+      let existsInAuth = false
+      try {
+        const authMethods = await fetchSignInMethodsForEmail(auth, data.email.toLowerCase())
+        existsInAuth = authMethods.length > 0
+      } catch (authError: any) {
+        // If auth check fails, assume user doesn't exist in Auth
+        console.log('Could not check Firebase Auth for email:', authError.message)
+        existsInAuth = false
+      }
 
-      // If user already exists, mark old pending invitations as expired and send password reset email
+      const userExists = existsInProfiles || existsInAuth
+
+      // If user already exists, prevent invitation
       if (userExists) {
-        // Find and expire old pending invitations
-        const invitationsRef = collection(db, 'invitations')
-        const invitationQuery = query(
-          invitationsRef, 
-          where('email', '==', data.email.toLowerCase()),
-          where('status', '==', 'pending')
-        )
-        const oldInvitations = await getDocs(invitationQuery)
-        
-        // Mark old invitations as expired
-        const updatePromises = oldInvitations.docs.map(invDoc => 
-          updateDoc(doc(db, 'invitations', invDoc.id), {
-            status: 'expired',
-            updatedAt: new Date().toISOString(),
-          })
-        )
-        await Promise.all(updatePromises)
-
-        // Send password reset email to existing user
-        try {
-          await sendPasswordResetEmail(auth, data.email.toLowerCase(), {
-            url: `${window.location.origin}/reset-password`,
-            handleCodeInApp: false,
-          })
-
-          setResult({
-            success: true,
-            message: `Password reset email sent to ${data.email}! They can use it to reset their password.`,
-          })
-
-          toast({
-            title: 'Email Sent',
-            description: `Password reset email sent to ${data.email}.`,
-          })
-
-          form.reset()
-          setIsSubmitting(false)
-          return
-        } catch (emailError: any) {
-          // If email sending fails, show error
-          setResult({
-            success: false,
-            message: `Failed to send email: ${emailError.message || 'Unknown error'}`,
-          })
-          setIsSubmitting(false)
-          return
-        }
+        setResult({
+          success: false,
+          message: 'A user with this email already exists. Please use a different email address.',
+        })
+        form.setError('email', {
+          type: 'manual',
+          message: 'A user with this email already exists.',
+        })
+        setIsSubmitting(false)
+        return
       }
 
       // If user doesn't exist, create new invitation and send signup email
@@ -262,13 +310,29 @@ export const InviteUserDialog = ({
                 <FormItem>
                   <FormLabel>Email Address *</FormLabel>
                   <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="user@example.com"
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value.toLowerCase())}
-                    />
+                    <div className="relative">
+                      <Input
+                        type="email"
+                        placeholder="user@example.com"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e.target.value.toLowerCase())
+                          setEmailExists(null) // Reset email exists state when user types
+                        }}
+                        className={emailExists === true ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                      />
+                      {isCheckingEmail && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
                   </FormControl>
+                  {emailExists === true && (
+                    <p className="text-sm text-red-600 mt-1">
+                      A user with this email already exists. Please use a different email address.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -408,7 +472,7 @@ export const InviteUserDialog = ({
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || teamsLoading}
+                disabled={isSubmitting || teamsLoading || emailExists === true || isCheckingEmail}
               >
                 {isSubmitting ? (
                   <>

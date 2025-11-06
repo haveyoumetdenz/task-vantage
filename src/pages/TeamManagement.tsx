@@ -124,7 +124,7 @@ function TeamNode({ team, members, onUpdateMemberStatus, level }: TeamNodeProps)
 
 export default function TeamManagement() {
   const { profile } = useFirebaseProfile();
-  const { teamHierarchy, canManageUsers, canManageTeams } = useFirebaseRBAC();
+  const { teamHierarchy, canManageUsers, canManageTeams, isHR } = useFirebaseRBAC();
   const { teamMembers, loading: membersLoading } = useFirebaseTeamMembers();
   const { teams, loading: teamsLoading, getTeamHierarchy } = useFirebaseTeams();
   const { updateMemberStatus, updateMemberRole, updateMemberTeam, loading: managementLoading } = useFirebaseTeamManagement();
@@ -267,6 +267,16 @@ export default function TeamManagement() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
+        {
+          id: 'senior-management',
+          name: 'Senior Management',
+          description: 'Senior Management team - oversees all teams',
+          parentTeamId: null,
+          managerId: user.uid,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
       ];
 
       for (const team of teamsToAdd) {
@@ -276,7 +286,7 @@ export default function TeamManagement() {
 
       toast({
         title: "Success",
-        description: "Teams created successfully! Engineering 1, Engineering 2, and HR teams have been added.",
+        description: "Teams created successfully! Engineering 1, Engineering 2, HR, and Senior Management teams have been added.",
       });
     } catch (error: any) {
       console.error('Error creating teams:', error);
@@ -302,38 +312,11 @@ export default function TeamManagement() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Team Management</h1>
-          <p className="text-muted-foreground">
-            View your organization structure and team members ({profile?.role})
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {teams.length === 0 && (
-            <Button 
-              onClick={createTeams} 
-              disabled={isCreatingTeams}
-              className="bg-primary hover:bg-primary/90"
-            >
-              {isCreatingTeams ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating Teams...
-                </>
-              ) : (
-                'Create Team Structure'
-              )}
-            </Button>
-          )}
-          <Button 
-            onClick={fixUndefinedStatus} 
-            variant="outline"
-            className="border-orange-500 text-orange-500 hover:bg-orange-50"
-          >
-            Fix Status Fields
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Team Management</h1>
+        <p className="text-muted-foreground">
+          View your organization structure and team members ({profile?.role})
+        </p>
       </div>
 
       {/* Organization Tree */}
@@ -353,14 +336,24 @@ export default function TeamManagement() {
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No teams found. Click the "Create Team Structure" button above to set up your organization.</p>
-              <div className="mt-4 p-4 bg-muted rounded-lg">
-                <p className="text-sm font-medium mb-2">This will create:</p>
-                <ul className="text-sm text-left space-y-1">
-                  <li>• Engineering 1 (top-level team)</li>
-                  <li>• Engineering 2 (under Engineering 1)</li>
-                  <li>• HR (top-level team)</li>
-                </ul>
-              </div>
+              {isHR && (
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                  <p className="text-sm font-medium mb-2">This will create:</p>
+                  <ul className="text-sm text-left space-y-1">
+                    <li>• Engineering 1 (top-level team)</li>
+                    <li>• Engineering 2 (under Engineering 1)</li>
+                    <li>• HR (top-level team)</li>
+                    <li>• Senior Management (top-level team)</li>
+                  </ul>
+                </div>
+              )}
+              {!isHR && (
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Only HR users can create teams. Please contact your HR administrator.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-6">
@@ -375,14 +368,11 @@ export default function TeamManagement() {
                   return (
                     <div key={team.id} className="space-y-4">
                       <div className={`border rounded-lg p-4 ${level > 0 ? 'ml-6 border-l-2 border-l-primary' : ''}`}>
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <h3 className="text-lg font-semibold">{team.name}</h3>
-                            {team.description && (
-                              <p className="text-sm text-muted-foreground">{team.description}</p>
-                            )}
-                          </div>
-                          <Badge variant="outline">{team.status}</Badge>
+                        <div className="mb-3">
+                          <h3 className="text-lg font-semibold">{team.name}</h3>
+                          {team.description && (
+                            <p className="text-sm text-muted-foreground">{team.description}</p>
+                          )}
                         </div>
                         
                         {teamMembers.length > 0 && (
@@ -407,25 +397,6 @@ export default function TeamManagement() {
                                     <Badge variant="secondary" className="text-xs">
                                       {member.role || 'Staff'}
                                     </Badge>
-                                    <Badge 
-                                      variant={
-                                        // Check status, isActive, and deactivatedAt fields (same logic as User Management)
-                                        (member.status === 'active' || member.status === undefined || member.status === null) && 
-                                        member.isActive !== false && 
-                                        !member.deactivatedAt
-                                          ? 'default' 
-                                          : (member.status === 'deactivated' || member.isActive === false || member.deactivatedAt)
-                                            ? 'destructive' 
-                                            : 'default'
-                                      }
-                                      className="text-xs"
-                                    >
-                                      {member.isActive === false || member.deactivatedAt ? 'deactivated' : (member.status || 'active')}
-                                    </Badge>
-                                    {/* Debug info - remove in production */}
-                                    <span className="text-xs text-gray-400 ml-1">
-                                      (status: {member.status || 'undefined'}, isActive: {member.isActive?.toString() || 'undefined'}, deactivatedAt: {member.deactivatedAt ? 'exists' : 'none'})
-                                    </span>
                                   </div>
                                 </div>
                               </div>

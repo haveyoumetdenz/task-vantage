@@ -1,19 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
-import { toast } from 'sonner'
+import { useToast } from '@/hooks/use-toast'
+import { auth } from '@/integrations/firebase/client'
+import { confirmPasswordReset } from 'firebase/auth'
 
 const resetPasswordSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  resetCode: z.string().min(1, 'Reset code is required'),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/^(?=.*[a-zA-Z])(?=.*\d)/, 'Password must contain both letters and numbers'),
@@ -27,48 +27,93 @@ type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>
 
 export const ResetPasswordWithCodeForm = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
+  const [isValidating, setIsValidating] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const { toast } = useToast()
+  const oobCode = searchParams.get('oobCode')
+  const mode = searchParams.get('mode')
 
   const form = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-      email: '',
-      resetCode: '',
       password: '',
       confirmPassword: '',
     },
   })
 
+  useEffect(() => {
+    // Check if we have the required parameters from Firebase
+    if (!oobCode || mode !== 'resetPassword') {
+      // If no parameters, redirect to forgot password page after showing message
+      if (!oobCode && !mode) {
+        // User accessed page directly without parameters
+        setError('Please use the password reset link from your email. If you don\'t have one, please request a new password reset.')
+        setTimeout(() => {
+          navigate('/forgot-password')
+        }, 3000)
+      } else {
+        // Invalid or expired link
+        setError('Invalid or expired reset link. Please request a new password reset.')
+      }
+      setIsValidating(false)
+    } else {
+      setIsValidating(false)
+    }
+  }, [oobCode, mode, navigate])
+
   const onSubmit = async (formData: ResetPasswordFormData) => {
+    if (!oobCode) {
+      setError('Invalid reset code. Please request a new password reset.')
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      // Call our reset-password edge function
-      const { data, error: resetError } = await supabase.functions.invoke('reset-password', {
-        body: {
-          token: formData.resetCode,
-          newPassword: formData.password,
-          email: formData.email
-        }
-      });
+      // Use Firebase's confirmPasswordReset
+      await confirmPasswordReset(auth, oobCode, formData.password)
 
-      if (resetError) {
-        throw new Error(resetError.message || 'Failed to reset password');
-      }
-
-      toast.success('Password updated successfully! You can now log in with your new password.');
-      navigate('/login');
-
+      toast({
+        title: 'Password updated successfully!',
+        description: 'You can now log in with your new password.',
+      })
+      navigate('/login')
     } catch (error: any) {
-      console.error('Password reset error:', error);
-      setError(error.message || 'Failed to reset password. Please try again.');
+      console.error('Password reset error:', error)
+      let errorMessage = 'Failed to reset password. Please try again.'
+      
+      if (error.code === 'auth/expired-action-code') {
+        errorMessage = 'The reset link has expired. Please request a new password reset.'
+      } else if (error.code === 'auth/invalid-action-code') {
+        errorMessage = 'Invalid reset link. Please request a new password reset.'
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please choose a stronger password.'
+      }
+      
+      setError(errorMessage)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
+  }
+
+  if (isValidating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/50">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex items-center justify-center p-8">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span>Validating reset link...</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -77,50 +122,32 @@ export const ResetPasswordWithCodeForm = () => {
         <CardHeader className="text-center">
           <CardTitle>Reset Your Password</CardTitle>
           <CardDescription>
-            Enter the reset code from your email and your new password
+            Enter your new password
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="Enter your email"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {error && !isLoading && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+              {!oobCode && !mode && (
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    Go to Forgot Password
+                  </Button>
+                </div>
+              )}
+            </Alert>
+          )}
 
-              <FormField
-                control={form.control}
-                name="resetCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reset Code</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter the reset code from your email"
-                        {...field}
-                        disabled={isLoading}
-                        style={{ fontFamily: 'monospace', letterSpacing: '1px' }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {!error && (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
               <FormField
                 control={form.control}
@@ -190,13 +217,7 @@ export const ResetPasswordWithCodeForm = () => {
                 )}
               />
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || !!error}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Reset Password
               </Button>
@@ -213,6 +234,7 @@ export const ResetPasswordWithCodeForm = () => {
               </div>
             </form>
           </Form>
+          )}
         </CardContent>
       </Card>
     </div>
