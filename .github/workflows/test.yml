@@ -28,13 +28,24 @@ jobs:
       
       - name: Start Firestore Emulator
         run: |
-          firebase emulators:start --only firestore &
-          echo "Emulator starting..."
+          firebase emulators:start --only firestore --project task-vantage-test &
+          EMULATOR_PID=$!
+          echo "Emulator starting (PID: $EMULATOR_PID)..."
+          echo $EMULATOR_PID > /tmp/emulator.pid
       
       - name: Wait for Emulator to be ready
         run: |
-          timeout 60 bash -c 'until curl -s http://127.0.0.1:8080 > /dev/null 2>&1; do sleep 1; done'
-          echo "Emulator is ready!"
+          echo "Waiting for Firestore Emulator to be ready..."
+          for i in {1..60}; do
+            if curl -s http://127.0.0.1:8080 > /dev/null 2>&1; then
+              echo "Emulator is ready!"
+              exit 0
+            fi
+            echo "Attempt $i: Emulator not ready yet, waiting..."
+            sleep 2
+          done
+          echo "ERROR: Emulator did not start within 120 seconds"
+          exit 1
       
       - name: Run unit tests
         run: npm run test:run
@@ -43,6 +54,16 @@ jobs:
         run: npm run test:emu
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+      
+      - name: Stop Firestore Emulator
+        if: always()
+        run: |
+          if [ -f /tmp/emulator.pid ]; then
+            EMULATOR_PID=$(cat /tmp/emulator.pid)
+            echo "Stopping emulator (PID: $EMULATOR_PID)..."
+            kill $EMULATOR_PID 2>/dev/null || true
+            pkill -f "firebase emulators:start" || true
+          fi
       
       - name: Run coverage
         id: coverage

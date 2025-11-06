@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { getDocs, collection, query, where } from 'firebase/firestore'
 import { db, clearCollection } from '@/test/emulatorDb'
 import { createNotificationEmu, getNotificationByIdEmu } from '@/services/notifications.emu'
@@ -16,6 +16,23 @@ describe('NS-COR-01: Task/Project Update Notifications (Firestore Emulator)', ()
       console.error(getEmulatorNotRunningMessage())
       throw new Error('Firestore Emulator is not running. Please start it with: npm run emulator:start')
     }
+    await clearNotifications()
+  })
+
+  beforeEach(async () => {
+    // Clear notifications before each test to ensure isolation
+    await clearNotifications()
+    await new Promise(resolve => setTimeout(resolve, 100))
+  })
+
+  afterEach(async () => {
+    // Clean up after each test to ensure no data leaks
+    await clearNotifications()
+    await new Promise(resolve => setTimeout(resolve, 50))
+  })
+
+  afterAll(async () => {
+    // Final cleanup after all tests
     await clearNotifications()
   })
 

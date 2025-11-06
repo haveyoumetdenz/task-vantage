@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { db, clearCollection } from '@/test/emulatorDb'
 import { createTaskEmu, getTaskByIdEmu, updateTaskDueDateEmu } from '@/services/tasks.emu'
 import { isTaskOverdue, isTaskDueSoon, getDeadlineStatus } from '@/utils/dueDateValidation'
@@ -23,6 +23,17 @@ describe('DST-COR-01: Attach/Update Due Dates (Firestore Emulator)', () => {
     await clearTasks()
     // Small delay to ensure cleanup is complete
     await new Promise(resolve => setTimeout(resolve, 100))
+  })
+
+  afterEach(async () => {
+    // Clean up after each test to ensure no data leaks
+    await clearTasks()
+    await new Promise(resolve => setTimeout(resolve, 50))
+  })
+
+  afterAll(async () => {
+    // Final cleanup after all tests
+    await clearTasks()
   })
 
   it('should add due date to task', async () => {

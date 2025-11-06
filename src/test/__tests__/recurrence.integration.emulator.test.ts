@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { getDocs, collection } from 'firebase/firestore'
 import { clearCollection } from '@/test/emulatorDb'
 import { createRecurringTemplateEmu, materializeInstancesFromConfigEmu } from '@/services/recurrence.emu'
@@ -18,6 +18,23 @@ describe('TM-COR-05 Task Recurrence (Firestore Emulator)', () => {
       console.error(getEmulatorNotRunningMessage())
       throw new Error('Firestore Emulator is not running. Please start it with: npm run emulator:start')
     }
+    await clearAll()
+  })
+
+  beforeEach(async () => {
+    // Clear all data before each test to ensure isolation
+    await clearAll()
+    await new Promise(resolve => setTimeout(resolve, 100))
+  })
+
+  afterEach(async () => {
+    // Clean up after each test to ensure no data leaks
+    await clearAll()
+    await new Promise(resolve => setTimeout(resolve, 50))
+  })
+
+  afterAll(async () => {
+    // Final cleanup after all tests
     await clearAll()
   })
 

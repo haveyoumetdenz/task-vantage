@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { getDocs, collection } from 'firebase/firestore'
 import { db, clearCollection } from '@/test/emulatorDb'
 import { createTaskEmu, getTaskByIdEmu, updateTaskStatusEmu } from '@/services/tasks.emu'
@@ -23,6 +23,17 @@ describe('TM-COR-03: Change Task Status (Firestore Emulator)', () => {
     await clearTasks()
     // Small delay to ensure cleanup is complete
     await new Promise(resolve => setTimeout(resolve, 100))
+  })
+
+  afterEach(async () => {
+    // Clean up after each test to ensure no data leaks
+    await clearTasks()
+    await new Promise(resolve => setTimeout(resolve, 50))
+  })
+
+  afterAll(async () => {
+    // Final cleanup after all tests
+    await clearTasks()
   })
 
   it('should update task status from todo to in_progress', async () => {

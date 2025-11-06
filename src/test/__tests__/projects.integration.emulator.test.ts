@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { collection, getDocs, addDoc, updateDoc, doc, query, where, getDoc } from 'firebase/firestore'
 import { db, clearCollection } from '@/test/emulatorDb'
 import { createProjectEmu, getProjectByIdEmu } from '@/services/projects.emu'
@@ -21,6 +21,23 @@ describe('TGO-COR-01 Create Project (Firestore Emulator)', () => {
     // Clear collections with longer timeout to handle large datasets
     await clearAll()
   }, 30000) // Increase timeout to 30 seconds for clearing collections
+
+  beforeEach(async () => {
+    // Clear all data before each test to ensure isolation
+    await clearAll()
+    await new Promise(resolve => setTimeout(resolve, 100))
+  })
+
+  afterEach(async () => {
+    // Clean up after each test to ensure no data leaks
+    await clearAll()
+    await new Promise(resolve => setTimeout(resolve, 50))
+  })
+
+  afterAll(async () => {
+    // Final cleanup after all tests
+    await clearAll()
+  })
 
   it('creates a project and can read it back', async () => {
     const id = await createProjectEmu({ title: 'Emu Project' })
