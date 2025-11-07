@@ -47,7 +47,10 @@ export const LoginForm = () => {
     const { error } = await signIn(data.email, data.password)
 
     if (error) {
-      if (error.message?.includes('MFA challenge required')) {
+      // Check for Firebase error codes
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        setError('Incorrect credentials')
+      } else if (error.message?.includes('MFA challenge required')) {
         // Check if user has MFA enabled
         try {
           const { data: mfaData } = await supabase.auth.mfa.listFactors()
@@ -66,7 +69,7 @@ export const LoginForm = () => {
           setError('MFA verification failed. Please try again.')
         }
       } else if (error.message?.includes('Invalid login credentials')) {
-        setError('Invalid email or password. Please check your credentials and try again.')
+        setError('Incorrect credentials')
       } else {
         setError(error.message || 'An error occurred during sign in.')
       }

@@ -118,8 +118,16 @@ function TaskCard({ task, onClick, onEdit, onDelete, assigneeProfiles }: {
           </div>
           {task.dueDate && (
             <div className={`flex items-center gap-1 ${deadlineInfo.className}`}>
-              <Calendar className="h-3 w-3" />
-              <span>{task.dueDate ? format(new Date(task.dueDate), 'MMM dd, h:mm a') : 'No due date'}</span>
+              {deadlineInfo.status === 'overdue' ? (
+                <AlertTriangle className="h-3 w-3 text-red-600" />
+              ) : deadlineInfo.status === 'due_soon' ? (
+                <Clock className="h-3 w-3 text-yellow-600" />
+              ) : (
+                <Calendar className="h-3 w-3" />
+              )}
+              <span className={deadlineInfo.status === 'overdue' ? 'text-red-600 font-medium' : deadlineInfo.status === 'due_soon' ? 'text-yellow-600 font-medium' : ''}>
+                {task.dueDate ? format(new Date(task.dueDate), 'MMM dd, h:mm a') : 'No due date'}
+              </span>
               {deadlineInfo.badge && (
                 <Badge variant={deadlineInfo.badge.variant} className="ml-1 text-xs">
                   {deadlineInfo.badge.text}
