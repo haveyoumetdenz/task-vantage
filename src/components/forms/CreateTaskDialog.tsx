@@ -375,42 +375,41 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="due_time"
-                render={({ field }) => {
-                  // Sync time value with date field if date is set
-                  const dueDate = form.watch('due_date')
-                  const currentTime = dueDate 
-                    ? `${String(dueDate.getHours()).padStart(2, '0')}:${String(dueDate.getMinutes()).padStart(2, '0')}`
-                    : field.value || '23:59'
-                  
-                  return (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Due Time (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="time"
-                          value={currentTime}
-                          onChange={(e) => {
-                            field.onChange(e.target.value)
-                            // Update date field with new time
-                            if (dueDate) {
-                              const [hours, minutes] = e.target.value.split(':')
-                              const newDate = new Date(dueDate)
-                              newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0)
-                              form.setValue('due_date', newDate)
-                            }
-                          }}
-                          disabled={!dueDate}
-                          placeholder="HH:MM"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
-              />
+                     <FormField
+                       control={form.control}
+                       name="due_time"
+                       render={({ field }) => {
+                         // Sync time value with date field if date is set
+                         const dueDate = form.watch('due_date')
+                         const currentTime = dueDate 
+                           ? `${String(dueDate.getHours()).padStart(2, '0')}:${String(dueDate.getMinutes()).padStart(2, '0')}`
+                           : field.value || '23:59'
+                         
+                         return (
+                           <FormItem className="flex flex-col">
+                             <FormLabel>Due Time (Optional)</FormLabel>
+                             <FormControl>
+                               <Input
+                                 type="time"
+                                 value={currentTime}
+                                 onChange={(e) => {
+                                   field.onChange(e.target.value)
+                                   // Update date field with new time if date is set
+                                   if (dueDate) {
+                                     const [hours, minutes] = e.target.value.split(':')
+                                     const newDate = new Date(dueDate)
+                                     newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0)
+                                     form.setValue('due_date', newDate)
+                                   }
+                                 }}
+                                 placeholder="HH:MM"
+                               />
+                             </FormControl>
+                             <FormMessage />
+                           </FormItem>
+                         )
+                       }}
+                     />
             </div>
 
 

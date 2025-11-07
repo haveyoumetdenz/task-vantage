@@ -259,11 +259,6 @@ export const InviteUserDialog = ({
                       )}
                     </div>
                   </FormControl>
-                  {emailExists === true && (
-                    <p className="text-sm text-red-600 mt-1">
-                      A user with this email already exists. Please use a different email address.
-                    </p>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}
