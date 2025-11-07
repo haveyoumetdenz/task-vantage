@@ -44,6 +44,7 @@ const createTaskSchema = z.object({
   status: z.enum(['todo', 'in_progress', 'completed', 'cancelled']).default('todo'),
   priority: z.number().min(1).max(10).default(5),
   due_date: z.date().optional(),
+  due_time: z.string().optional(),
   project_id: z.string().optional(),
   assignee_ids: z.array(z.string()).min(1, 'At least one assignee is required'),
 })
@@ -72,6 +73,7 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
       priority: 5,
       project_id: defaultProjectId || 'no-project',
       assignee_ids: [],
+      due_time: '23:59', // Default to end of day
     },
   })
 
@@ -137,12 +139,26 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
     
     console.log('🔧 Final assignee IDs:', finalAssigneeIds)
     
+    // Combine date and time if both are provided
+    let dueDate: string | undefined = undefined
+    if (data.due_date) {
+      const dateTime = new Date(data.due_date)
+      if (data.due_time) {
+        const [hours, minutes] = data.due_time.split(':')
+        dateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0)
+      } else {
+        // Default to end of day if no time specified
+        dateTime.setHours(23, 59, 0, 0)
+      }
+      dueDate = format(dateTime, 'yyyy-MM-dd HH:mm:ss')
+    }
+    
     const taskData: CreateTaskData = {
       title: data.title,
       description: data.description,
       status: data.status,
       priority: data.priority,
-      dueDate: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : undefined,
+      dueDate: dueDate,
       projectId: data.project_id && data.project_id !== 'no-project' ? data.project_id : undefined,
       assigneeIds: finalAssigneeIds,
     }
@@ -306,45 +322,43 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="due_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Due Date (Optional)</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP p")
-                          ) : (
-                            <span>Pick a date and time</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="due_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Due Date (Optional)</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
                           onSelect={(date) => {
                             if (date) {
-                              // Set default time to end of day if no time specified
+                              // Preserve time if already set, otherwise use time from form or default to 23:59
                               const dateTime = new Date(date);
-                              if (field.value) {
-                                const currentTime = new Date(field.value);
-                                dateTime.setHours(currentTime.getHours(), currentTime.getMinutes());
-                              } else {
-                                dateTime.setHours(23, 59);
-                              }
+                              const currentTime = form.watch('due_time') || '23:59';
+                              const [hours, minutes] = currentTime.split(':');
+                              dateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
                               field.onChange(dateTime);
                             } else {
                               field.onChange(undefined);
@@ -354,12 +368,50 @@ export const CreateTaskDialog = ({ open, onOpenChange, defaultProjectId }: Creat
                           initialFocus
                           className="pointer-events-auto"
                         />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="due_time"
+                render={({ field }) => {
+                  // Sync time value with date field if date is set
+                  const dueDate = form.watch('due_date')
+                  const currentTime = dueDate 
+                    ? `${String(dueDate.getHours()).padStart(2, '0')}:${String(dueDate.getMinutes()).padStart(2, '0')}`
+                    : field.value || '23:59'
+                  
+                  return (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Due Time (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          value={currentTime}
+                          onChange={(e) => {
+                            field.onChange(e.target.value)
+                            // Update date field with new time
+                            if (dueDate) {
+                              const [hours, minutes] = e.target.value.split(':')
+                              const newDate = new Date(dueDate)
+                              newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0)
+                              form.setValue('due_date', newDate)
+                            }
+                          }}
+                          disabled={!dueDate}
+                          placeholder="HH:MM"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+            </div>
 
 
             <DialogFooter>
