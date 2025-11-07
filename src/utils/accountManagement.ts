@@ -131,6 +131,10 @@ export const reactivateUserAccount = async (userId: string, reactivatedBy: strin
       isActive: true,
       reactivatedAt: new Date(),
       reactivatedBy: reactivatedBy,
+      // Clear deactivation fields
+      deactivatedAt: null,
+      deactivatedBy: null,
+      deactivationReason: null,
       lastModified: new Date()
     })
     
