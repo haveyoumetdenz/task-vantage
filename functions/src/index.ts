@@ -336,14 +336,32 @@ export const createUserWithPassword = onCall(async (request) => {
 
         // Update profile
         // Preserve Senior Management role if user has _seniorManagementSet flag
+        // Preserve Manager role in HR team if user is already a Manager in HR
         const existingData = existingProfile.data()
         const preserveSeniorManagement = existingData?._seniorManagementSet === true && 
                                          existingData?.role === 'Senior Management'
+        const preserveHRManager = existingData?.role === 'Manager' && 
+                                  existingData?.teamId === 'hr' &&
+                                  role !== 'Manager' // Only preserve if HR is trying to change the role
+        
+        // Determine final role and teamId
+        let finalRole = role
+        let finalTeamId = teamId || null
+        
+        if (preserveSeniorManagement) {
+          finalRole = 'Senior Management'
+          finalTeamId = 'senior-management'
+        } else if (preserveHRManager) {
+          // Preserve Manager role in HR team
+          finalRole = 'Manager'
+          finalTeamId = 'hr'
+          console.log('🛡️ Preserving Manager role in HR team for user:', email)
+        }
         
         await existingProfile.ref.update({
           fullName: fullName,
-          role: preserveSeniorManagement ? 'Senior Management' : role,
-          teamId: preserveSeniorManagement ? 'senior-management' : (teamId || null),
+          role: finalRole,
+          teamId: finalTeamId,
           updatedAt: new Date().toISOString()
         })
 
