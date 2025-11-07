@@ -76,8 +76,8 @@ export const EditProjectDialog = ({ open, onOpenChange, project }: EditProjectDi
         description: project.description || '',
         status: project.status,
         progress: project.progress,
-        due_date: project.due_date ? new Date(project.due_date) : undefined,
-        assignee_ids: project.assignee_ids || [],
+        due_date: project.dueDate ? new Date(project.dueDate) : undefined,
+        assignee_ids: project.assigneeIds || [],
       })
     }
   }, [project, open, form])
@@ -93,8 +93,8 @@ export const EditProjectDialog = ({ open, onOpenChange, project }: EditProjectDi
       description: data.description,
       status: data.status,
       progress: data.progress,
-      due_date: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : undefined,
-      assignee_ids: data.assignee_ids,
+      dueDate: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : undefined,
+      assigneeIds: data.assignee_ids,
     }
 
     const result = await updateProject(projectData)
