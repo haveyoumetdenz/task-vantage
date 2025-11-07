@@ -444,7 +444,9 @@ function ProjectCard({ project, onAddTask, onEditProject, onDeleteProject }: {
     on_hold: "outline",
     archived: "destructive",
   }
-  const daysUntilDue = project.due_date ? Math.ceil((new Date(project.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null
+  // Check both dueDate (camelCase) and due_date (snake_case) for compatibility
+  const dueDateValue = project.dueDate || project.due_date
+  const daysUntilDue = dueDateValue ? Math.ceil((new Date(dueDateValue).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null
 
   return (
     <Card className="hover:shadow-medium transition-all duration-300 cursor-pointer" onClick={() => navigate(`/projects/${project.id}`)}>
