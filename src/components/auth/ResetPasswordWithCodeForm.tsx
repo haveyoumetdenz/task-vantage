@@ -177,6 +177,14 @@ export const ResetPasswordWithCodeForm = () => {
                         </Button>
                       </div>
                     </FormControl>
+                    <div className="text-xs text-muted-foreground space-y-1 mt-1">
+                      <p className="font-medium">Password requirements:</p>
+                      <ul className="list-disc list-inside space-y-0.5 ml-2">
+                        <li>At least 8 characters</li>
+                        <li>Contains at least one letter</li>
+                        <li>Contains at least one number</li>
+                      </ul>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
