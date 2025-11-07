@@ -33,6 +33,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { cn } from '@/lib/utils'
 import { TaskAssigneeSelect } from '@/components/tasks/TaskAssigneeSelect'
 import { useFirebaseProjects, Project, UpdateProjectData } from '@/hooks/useFirebaseProjects'
+import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
 
 const editProjectSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100, 'Title must be less than 100 characters'),
@@ -54,6 +55,7 @@ interface EditProjectDialogProps {
 export const EditProjectDialog = ({ open, onOpenChange, project }: EditProjectDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { updateProject } = useFirebaseProjects()
+  const { canReassignTasks } = useFirebaseRBAC()
 
   const form = useForm<EditProjectFormData>({
     resolver: zodResolver(editProjectSchema),
@@ -233,13 +235,19 @@ export const EditProjectDialog = ({ open, onOpenChange, project }: EditProjectDi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Team Members</FormLabel>
-                  <FormControl>
-                    <TaskAssigneeSelect
-                      value={field.value || []}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
+                    <FormControl>
+                      <TaskAssigneeSelect
+                        value={field.value || []}
+                        onChange={field.onChange}
+                        disabled={!canReassignTasks(project?.assigneeIds)}
+                      />
+                    </FormControl>
+                    {!canReassignTasks(project?.assigneeIds) && (
+                      <p className="text-xs text-muted-foreground">
+                        Only assignees can reassign projects.
+                      </p>
+                    )}
+                    <FormMessage />
                 </FormItem>
               )}
             />

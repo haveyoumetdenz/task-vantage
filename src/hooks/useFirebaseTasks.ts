@@ -344,10 +344,11 @@ export const useFirebaseTasks = (projectId?: string) => {
         const newAssignees = updateData.assigneeIds || []
         const assigneesChanged = JSON.stringify(oldAssignees.sort()) !== JSON.stringify(newAssignees.sort())
         
-        if (assigneesChanged && !canReassignTasks()) {
+        // Only assignees can reassign tasks
+        if (assigneesChanged && !oldAssignees.includes(user.uid)) {
           toast({
             title: "Permission Denied",
-            description: "Only Managers, Directors, and Senior Management can reassign tasks.",
+            description: "Only assignees can reassign tasks.",
             variant: "destructive",
           })
           return null

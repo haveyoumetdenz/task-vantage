@@ -183,6 +183,25 @@ export const useFirebaseProjects = () => {
       const { id, ...updateData } = projectData
       const projectRef = doc(db, 'projects', id)
       
+      const currentProject = projects.find(p => p.id === id)
+      
+      // Check if user is trying to reassign projects (change assignees)
+      if (updateData.assigneeIds && currentProject) {
+        const oldAssignees = currentProject.assigneeIds || []
+        const newAssignees = updateData.assigneeIds || []
+        const assigneesChanged = JSON.stringify(oldAssignees.sort()) !== JSON.stringify(newAssignees.sort())
+        
+        // Only assignees can reassign projects
+        if (assigneesChanged && !oldAssignees.includes(user.uid)) {
+          toast({
+            title: "Permission Denied",
+            description: "Only assignees can reassign projects.",
+            variant: "destructive",
+          })
+          return null
+        }
+      }
+      
       // Filter out undefined values to avoid Firestore errors
       const filteredUpdateData = Object.fromEntries(
         Object.entries(updateData).filter(([_, value]) => value !== undefined)

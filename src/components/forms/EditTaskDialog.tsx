@@ -272,12 +272,12 @@ export const EditTaskDialog = ({ open, onOpenChange, task }: EditTaskDialogProps
                       <TaskAssigneeSelect
                         value={field.value || []}
                         onChange={field.onChange}
-                        disabled={!canReassignTasks()}
+                        disabled={!canReassignTasks(task?.assigneeIds)}
                       />
                     </FormControl>
-                    {!canReassignTasks() && (
+                    {!canReassignTasks(task?.assigneeIds) && (
                       <p className="text-xs text-muted-foreground">
-                        Only Managers, Directors, and Senior Management can reassign tasks.
+                        Only assignees can reassign tasks.
                       </p>
                     )}
                     <FormMessage />

@@ -51,6 +51,7 @@ import { cn } from '@/lib/utils'
 import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
 import { format } from 'date-fns'
 import { PrioritySelector } from '@/components/forms/PrioritySelector'
+import { useFirebaseSubtasks } from '@/hooks/useFirebaseSubtasks'
 
 const statusConfig = {
   todo: { label: "To Do", color: "bg-blue-500" },
@@ -84,6 +85,9 @@ export default function TaskDetail() {
   const [editData, setEditData] = useState<any>({})
   const [showRecurringEditDialog, setShowRecurringEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  
+  // Get actual subtasks for count
+  const { subtasks } = useFirebaseSubtasks(taskId || '')
   
   // Check if user can edit this task
   const userCanEdit = task ? canEditTask(task.userId, profile?.teamId) : false
@@ -396,11 +400,11 @@ export default function TaskDetail() {
                       value={editData.assignee_ids}
                       onChange={(value) => setEditData({ ...editData, assignee_ids: value })}
                       className="mt-1"
-                      disabled={!canReassignTasks()}
+                      disabled={!canReassignTasks(task.assigneeIds)}
                     />
-                    {!canReassignTasks() && (
+                    {!canReassignTasks(task.assigneeIds) && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Only Managers, Directors, and Senior Management can reassign tasks.
+                        Only assignees can reassign tasks.
                       </p>
                     )}
                   </div>
@@ -498,7 +502,7 @@ export default function TaskDetail() {
             <CardContent className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Subtasks</span>
-                <span className="font-medium">{task.subtask_count || 0}</span>
+                <span className="font-medium">{subtasks?.length || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Assignees</span>

@@ -183,9 +183,12 @@ export const useFirebaseRBAC = () => {
   }
 
   // Check if user can reassign tasks (change assignees)
-  // Only Manager, Director, and Senior Management can reassign tasks, regardless of team
-  const canReassignTasks = () => {
-    return isManager || isDirector || isSeniorManagement
+  // Only assignees (owners) can reassign tasks
+  const canReassignTasks = (assigneeIds?: string[]) => {
+    if (!profile?.userId) return false
+    if (!assigneeIds || assigneeIds.length === 0) return false
+    // User must be in the assigneeIds array to reassign
+    return assigneeIds.includes(profile.userId)
   }
 
   const getManagedTeams = () => {
