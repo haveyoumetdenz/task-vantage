@@ -147,9 +147,18 @@ export default function TeamManagement() {
     });
     
     return teamMembers.reduce((acc, member) => {
-      if (!member.teamId) return acc;
-      if (!acc[member.teamId]) acc[member.teamId] = [];
-      acc[member.teamId].push(member);
+      // Handle Senior Management users specially
+      // If user has role 'Senior Management' but no teamId, assign them to 'senior-management' team
+      let teamId = member.teamId;
+      if (!teamId && member.role === 'Senior Management') {
+        teamId = 'senior-management';
+      }
+      
+      // Skip members without a teamId (unless they're Senior Management, which we handled above)
+      if (!teamId) return acc;
+      
+      if (!acc[teamId]) acc[teamId] = [];
+      acc[teamId].push(member);
       return acc;
     }, {} as Record<string, TeamMember[]>);
   }, [teamMembers]);
