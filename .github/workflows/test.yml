@@ -63,7 +63,7 @@ jobs:
           echo "⚠️  Integration and E2E tests may fail due to emulator timing issues"
       
       - name: Run unit tests
-        run: npm run test:run
+        run: npm run test:unit
       
       - name: Run integration tests
         id: integration_tests
