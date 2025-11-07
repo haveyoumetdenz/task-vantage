@@ -265,11 +265,27 @@ export default function Projects() {
             <div className="text-2xl font-bold text-warning">
               {projects.filter(p => {
                 if (!p.due_date || p.status === 'completed' || p.status === 'archived') return false
-                const dueDate = startOfDay(new Date(p.due_date)) // Normalize to start of day
-                const now = new Date()
-                const weekStart = startOfDay(startOfWeek(now, { weekStartsOn: 1 })) // Monday at 00:00
-                const weekEnd = endOfDay(endOfWeek(now, { weekStartsOn: 1 })) // Sunday at 23:59:59
-                return dueDate >= weekStart && dueDate <= weekEnd
+                try {
+                  const dueDate = startOfDay(new Date(p.due_date)) // Normalize to start of day
+                  const now = new Date()
+                  const weekStart = startOfDay(startOfWeek(now, { weekStartsOn: 1 })) // Monday at 00:00
+                  const weekEnd = endOfDay(endOfWeek(now, { weekStartsOn: 1 })) // Sunday at 23:59:59
+                  
+                  // Debug logging
+                  console.log('Due This Week check:', {
+                    project: p.title,
+                    due_date: p.due_date,
+                    dueDate: dueDate.toISOString(),
+                    weekStart: weekStart.toISOString(),
+                    weekEnd: weekEnd.toISOString(),
+                    isInWeek: dueDate >= weekStart && dueDate <= weekEnd
+                  })
+                  
+                  return dueDate >= weekStart && dueDate <= weekEnd
+                } catch (error) {
+                  console.error('Error checking due date:', error, p)
+                  return false
+                }
               }).length}
             </div>
           </CardContent>
