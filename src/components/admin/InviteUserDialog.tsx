@@ -341,7 +341,7 @@ export const InviteUserDialog = ({
                     <div className="relative">
                       <Input
                         type={showPassword ? 'text' : 'password'}
-                        placeholder="Enter password (min 6 characters)"
+                               placeholder="Enter password (min 8 characters, letters & numbers)"
                         {...field}
                         disabled={isSubmitting}
                       />
