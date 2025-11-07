@@ -1,4 +1,4 @@
-import { differenceInDays, isPast, isValid } from 'date-fns';
+import { differenceInDays, differenceInHours, isPast, isValid } from 'date-fns';
 
 export type DeadlineStatus = 'overdue' | 'due_soon' | 'normal' | 'completed';
 
@@ -29,7 +29,55 @@ export function getDeadlineInfo(
     };
   }
 
-  // All other tasks return blue styling
+  // If no due date, return normal status
+  if (!due_date) {
+    return {
+      status: 'normal',
+      message: '',
+      className: 'text-blue-700 dark:text-blue-300',
+    };
+  }
+
+  const dueDate = new Date(due_date);
+  if (!isValid(dueDate)) {
+    return {
+      status: 'normal',
+      message: '',
+      className: 'text-blue-700 dark:text-blue-300',
+    };
+  }
+
+  const now = new Date();
+  
+  // Check if overdue (past due date)
+  if (isPast(dueDate)) {
+    const daysOverdue = differenceInDays(now, dueDate);
+    return {
+      status: 'overdue',
+      message: daysOverdue === 0 ? 'Overdue today' : `${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue`,
+      className: 'text-red-600',
+      badge: {
+        text: 'Overdue',
+        variant: 'destructive',
+      },
+    };
+  }
+
+  // Check if due soon (within 24 hours)
+  const hoursUntilDue = differenceInHours(dueDate, now);
+  if (hoursUntilDue > 0 && hoursUntilDue <= 24) {
+    return {
+      status: 'due_soon',
+      message: hoursUntilDue <= 1 ? 'Due in less than an hour' : `Due in ${Math.floor(hoursUntilDue)} hour${Math.floor(hoursUntilDue) > 1 ? 's' : ''}`,
+      className: 'text-yellow-600',
+      badge: {
+        text: 'Due Soon',
+        variant: 'warning',
+      },
+    };
+  }
+
+  // Normal status (not overdue, not due soon)
   return {
     status: 'normal',
     message: '',
