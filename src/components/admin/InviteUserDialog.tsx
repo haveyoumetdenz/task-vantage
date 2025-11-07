@@ -24,17 +24,24 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useFirebaseTeams } from '@/hooks/useFirebaseTeams'
 import { useFirebaseRBAC } from '@/hooks/useFirebaseRBAC'
-import { db, auth } from '@/integrations/firebase/client'
+import { db, auth, functions } from '@/integrations/firebase/client'
 import { collection, addDoc, query, where, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth'
+import { httpsCallable } from 'firebase/functions'
+import { Eye, EyeOff } from 'lucide-react'
 
 const inviteUserSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   fullName: z.string().min(1, 'Full name is required'),
   role: z.enum(['Staff', 'Manager', 'Director', 'Senior Management']),
   teamId: z.string().min(1, 'Please select a team'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 })
 
 type InviteUserFormData = z.infer<typeof inviteUserSchema>
@@ -52,6 +59,8 @@ export const InviteUserDialog = ({
   const [result, setResult] = useState<{ success: boolean; message: string; invitationLink?: string } | null>(null)
   const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const [emailExists, setEmailExists] = useState<boolean | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { teams, loading: teamsLoading } = useFirebaseTeams()
   const { profile } = useFirebaseRBAC()
   const { user } = useAuth()
@@ -64,6 +73,8 @@ export const InviteUserDialog = ({
       fullName: '',
       role: 'Staff',
       teamId: '',
+      password: '',
+      confirmPassword: '',
     },
   })
 
@@ -138,148 +149,68 @@ export const InviteUserDialog = ({
 
   const onSubmit = async (data: InviteUserFormData) => {
     if (!user || !profile?.userId) {
-      setResult({ success: false, message: 'You must be logged in to invite users' })
+      setResult({ success: false, message: 'You must be logged in to create user accounts' })
       return
     }
 
-    // Check if email exists before submitting
-    if (emailExists === true) {
-      setResult({
-        success: false,
-        message: 'A user with this email already exists. Please use a different email address.',
-      })
-      return
-    }
-
-    // Double-check if email exists (in case validation didn't run)
     setIsSubmitting(true)
     setResult(null)
 
     try {
-      // Check if user already exists in profiles
-      const profilesRef = collection(db, 'profiles')
-      const emailQuery = query(profilesRef, where('email', '==', data.email.toLowerCase()))
-      const emailSnapshot = await getDocs(emailQuery)
-      const existsInProfiles = !emailSnapshot.empty
-
-      // Check Firebase Auth
-      let existsInAuth = false
-      try {
-        const authMethods = await fetchSignInMethodsForEmail(auth, data.email.toLowerCase())
-        existsInAuth = authMethods.length > 0
-      } catch (authError: any) {
-        // If auth check fails, assume user doesn't exist in Auth
-        console.log('Could not check Firebase Auth for email:', authError.message)
-        existsInAuth = false
-      }
-
-      const userExists = existsInProfiles || existsInAuth
-
-      // If user already exists, prevent invitation
-      if (userExists) {
-        setResult({
-          success: false,
-          message: 'A user with this email already exists. Please use a different email address.',
-        })
-        form.setError('email', {
-          type: 'manual',
-          message: 'A user with this email already exists.',
-        })
-        setIsSubmitting(false)
-        return
-      }
-
-      // If user doesn't exist, create new invitation and send signup email
-      // Mark any old pending invitations as expired (allow re-sending)
-      const invitationsRef = collection(db, 'invitations')
-      const invitationQuery = query(
-        invitationsRef,
-        where('email', '==', data.email.toLowerCase()),
-        where('status', '==', 'pending')
-      )
-      const oldInvitations = await getDocs(invitationQuery)
+      // Call Cloud Function to create user with password
+      const createUserWithPassword = httpsCallable(functions, 'createUserWithPassword')
       
-      // Mark old pending invitations as expired (allow re-sending)
-      const updatePromises = oldInvitations.docs.map(invDoc => 
-        updateDoc(doc(db, 'invitations', invDoc.id), {
-          status: 'expired',
-          updatedAt: new Date().toISOString(),
-        })
-      )
-      await Promise.all(updatePromises)
-
-      // Generate new invitation token
-      const invitationToken = crypto.randomUUID()
-      const invitationId = crypto.randomUUID()
-
-      // Create new invitation document
-      const invitationData = {
-        id: invitationId,
+      const result = await createUserWithPassword({
         email: data.email.toLowerCase(),
+        password: data.password,
         fullName: data.fullName,
         role: data.role,
         teamId: data.teamId,
-        invitedBy: profile.userId,
-        invitedByName: profile.fullName || user.email || 'HR',
-        invitationToken,
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
+      })
 
-      await addDoc(collection(db, 'invitations'), invitationData)
+      const response = result.data as { success: boolean; message: string; userId?: string; isNewUser?: boolean }
 
-      const invitationLink = `${window.location.origin}/signup?invitation=${invitationToken}`
-
-      // Send invitation email via Firebase Auth
-      // Try to send password reset email - this will work if user exists in Firebase Auth
-      try {
-        await sendPasswordResetEmail(auth, data.email.toLowerCase(), {
-          url: `${window.location.origin}/signup?invitation=${invitationToken}`,
-          handleCodeInApp: false,
-        })
-
-        // Email sent successfully via Firebase Auth
+      if (response.success) {
         setResult({
           success: true,
-          message: `Invitation email sent to ${data.email}! They will receive an email to set their password.`,
+          message: response.message || `User account ${response.isNewUser ? 'created' : 'updated'} successfully! The user can now log in with the password you set.`,
         })
 
         toast({
-          title: 'Invitation Sent',
-          description: `Invitation email sent to ${data.email}. They will receive an email to set their password.`,
+          title: 'Success',
+          description: response.message || `User account ${response.isNewUser ? 'created' : 'updated'} successfully!`,
         })
 
         form.reset()
-        setIsSubmitting(false)
-      } catch (authError: any) {
-        // User doesn't exist in Firebase Auth yet - show invitation link for manual sending
-        // This is expected for new users who haven't signed up yet
-        console.log('User not in Firebase Auth yet, showing invitation link:', authError)
-        
+        onOpenChange(false)
+      } else {
         setResult({
-          success: true,
-          message: `Invitation created for ${data.email}! Copy the link below and send it manually:`,
-          invitationLink,
+          success: false,
+          message: response.message || 'Failed to create user account. Please try again.',
         })
-
-        toast({
-          title: 'Invitation Created',
-          description: `Invitation created! Copy the link and send it to ${data.email} manually.`,
-        })
-
-        form.reset()
-        setIsSubmitting(false)
       }
 
     } catch (error: any) {
-      console.error('Error inviting user:', error)
+      console.error('Error creating user account:', error)
+      
+      let errorMessage = 'Failed to create user account. Please try again.'
+      
+      if (error.code === 'functions/already-exists') {
+        errorMessage = 'A user with this email already exists. The account has been updated with the new password and profile information.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
       setResult({
         success: false,
-        message: error.message || 'Failed to create invitation. Please try again.',
+        message: errorMessage,
       })
-      setIsSubmitting(false)
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -294,10 +225,10 @@ export const InviteUserDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Invite New User
+            Create New User Account
           </DialogTitle>
           <DialogDescription>
-            Create an invitation for a new user. They will receive an email with a signup link.
+            Create a new user account with email, password, role, and team. The user can log in immediately with the password you set.
           </DialogDescription>
         </DialogHeader>
 
@@ -405,6 +336,76 @@ export const InviteUserDialog = ({
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password *</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter password (min 6 characters)"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={isSubmitting}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm Password *</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="Confirm password"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        disabled={isSubmitting}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Result Alert */}
             {result && (
               <div className={`p-4 rounded-md border ${
@@ -477,12 +478,12 @@ export const InviteUserDialog = ({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating Invitation...
+                    Creating Account...
                   </>
                 ) : (
                   <>
                     <UserPlus className="h-4 w-4 mr-2" />
-                    Invite User
+                    Create Account
                   </>
                 )}
               </Button>

@@ -258,3 +258,155 @@ export const deleteUserAccount = onCall(async (request) => {
   }
 })
 
+// Cloud Function to create user account with password (HR sets password)
+export const createUserWithPassword = onCall(async (request) => {
+  try {
+    // Check if user is authenticated
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated')
+    }
+
+    const { email, password, fullName, role, teamId } = request.data
+
+    if (!email || !password || !fullName || !role) {
+      throw new HttpsError('invalid-argument', 'Email, password, full name, and role are required')
+    }
+
+    // Check if the requesting user has permission to create accounts
+    const callerProfile = await getFirestore()
+      .collection('profiles')
+      .doc(request.auth.uid)
+      .get()
+
+    if (!callerProfile.exists) {
+      throw new HttpsError('permission-denied', 'Caller profile not found')
+    }
+
+    const callerData = callerProfile.data()
+    const isHR = callerData?.role === 'HR' || 
+                 (callerData?.role === 'Manager' && callerData?.teamId === 'hr')
+    const isSeniorManagement = callerData?.role === 'Senior Management'
+
+    if (!isHR && !isSeniorManagement) {
+      throw new HttpsError('permission-denied', 'Only HR and Senior Management can create user accounts')
+    }
+
+    console.log('👤 Creating user account:', email, 'by:', request.auth.uid)
+
+    const db = getFirestore()
+    const auth = getAuth()
+
+    // Check if user already exists in Firebase Auth
+    let userRecord
+    let userExists = false
+    try {
+      userRecord = await auth.getUserByEmail(email.toLowerCase())
+      userExists = true
+      console.log('ℹ️ User already exists in Firebase Auth:', userRecord.uid)
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        // User doesn't exist, we can create them
+        userExists = false
+      } else {
+        throw error
+      }
+    }
+
+    // Check if user already exists in Firestore profiles
+    const profilesRef = db.collection('profiles')
+    const emailQuery = await profilesRef.where('email', '==', email.toLowerCase()).get()
+    const profileExists = !emailQuery.empty
+
+    if (userExists || profileExists) {
+      // If user exists, update their profile instead of creating new account
+      if (userExists && profileExists) {
+        const existingProfile = emailQuery.docs[0]
+        const userId = existingProfile.id
+
+        // Update password if user exists
+        try {
+          await auth.updateUser(userRecord!.uid, {
+            password: password
+          })
+          console.log('✅ Password updated for existing user')
+        } catch (error: any) {
+          console.error('⚠️ Could not update password:', error)
+          // Continue with profile update even if password update fails
+        }
+
+        // Update profile
+        await existingProfile.ref.update({
+          fullName: fullName,
+          role: role,
+          teamId: teamId || null,
+          updatedAt: new Date().toISOString()
+        })
+
+        console.log('✅ Existing user profile updated')
+
+        return {
+          success: true,
+          message: `User account updated successfully. ${userExists ? 'Password updated.' : ''} Profile updated.`,
+          userId: userId,
+          isNewUser: false
+        }
+      } else {
+        throw new HttpsError('already-exists', 'A user with this email already exists')
+      }
+    }
+
+    // Create new user in Firebase Auth
+    const newUser = await auth.createUser({
+      email: email.toLowerCase(),
+      password: password,
+      displayName: fullName,
+      emailVerified: true // Auto-verify email since HR created it
+    })
+
+    console.log('✅ Firebase Auth user created:', newUser.uid)
+
+    // Split fullName into firstName and lastName
+    const nameParts = fullName.trim().split(/\s+/)
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+
+    // Create user profile in Firestore
+    await db.collection('profiles').doc(newUser.uid).set({
+      userId: newUser.uid,
+      email: email.toLowerCase(),
+      fullName: fullName,
+      firstName: firstName,
+      lastName: lastName,
+      role: role,
+      teamId: teamId || null,
+      status: 'active',
+      mfaEnabled: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    })
+
+    console.log('✅ Firestore profile created')
+
+    return {
+      success: true,
+      message: 'User account created successfully. The user can now log in with the password you set.',
+      userId: newUser.uid,
+      isNewUser: true
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error creating user account:', error)
+    
+    if (error instanceof HttpsError) {
+      throw error
+    }
+    
+    // Handle Firebase Auth errors
+    if (error.code === 'auth/email-already-exists') {
+      throw new HttpsError('already-exists', 'A user with this email already exists')
+    }
+    
+    throw new HttpsError('internal', `Failed to create user account: ${error.message || 'Unknown error'}`)
+  }
+})
+

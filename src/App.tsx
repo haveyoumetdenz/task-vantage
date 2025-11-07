@@ -43,7 +43,8 @@ const App = () => (
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
+            {/* Signup route removed - accounts are now created directly by HR */}
+            {/* <Route path="/signup" element={<SignUp />} /> */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/activate" element={<Activate />} />

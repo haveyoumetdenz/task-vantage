@@ -3,6 +3,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
 // Check if we should use emulators
 // In Vite, use import.meta.env (process.env is not available in browser)
@@ -32,6 +33,7 @@ if (getApps().length === 0) {
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app);
 
 // Connect to emulators if enabled
 if (USE_EMULATOR) {
@@ -90,6 +92,21 @@ if (USE_EMULATOR) {
     // Already connected or not running - that's fine
     if (!error.message?.includes('already been called')) {
       // Storage emulator might not be running - that's okay for now
+    }
+  }
+
+  try {
+    // Connect Functions Emulator (if needed)
+    const functionsHost = import.meta.env.VITE_FUNCTIONS_EMULATOR_HOST || 
+                          import.meta.env.FUNCTIONS_EMULATOR_HOST ||
+                          '127.0.0.1:5001';
+    const [host, port] = functionsHost.split(':');
+    connectFunctionsEmulator(functions, host, parseInt(port));
+    console.log('✅ Connected to Functions Emulator at', functionsHost);
+  } catch (error: any) {
+    // Already connected or not running - that's fine
+    if (!error.message?.includes('already been called')) {
+      // Functions emulator might not be running - that's okay for now
     }
   }
 }
