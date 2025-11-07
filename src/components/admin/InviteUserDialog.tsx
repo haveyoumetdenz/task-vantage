@@ -31,13 +31,14 @@ import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth'
 import { httpsCallable } from 'firebase/functions'
 import { Eye, EyeOff } from 'lucide-react'
+import { passwordSchema } from '@/utils/passwordSchema'
 
 const inviteUserSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   fullName: z.string().min(1, 'Full name is required'),
   role: z.enum(['Staff', 'Manager', 'Director', 'Senior Management']),
   teamId: z.string().min(1, 'Please select a team'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: passwordSchema,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",

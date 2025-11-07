@@ -11,10 +11,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { passwordSchema } from '@/utils/passwordSchema'
+
 const resetPasswordSchema = z.object({
-  password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/^(?=.*[a-zA-Z])(?=.*\d)/, 'Password must contain both letters and numbers'),
+  password: passwordSchema,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",

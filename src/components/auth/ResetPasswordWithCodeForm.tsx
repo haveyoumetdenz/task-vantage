@@ -12,11 +12,10 @@ import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { auth } from '@/integrations/firebase/client'
 import { confirmPasswordReset } from 'firebase/auth'
+import { passwordSchema } from '@/utils/passwordSchema'
 
 const resetPasswordSchema = z.object({
-  password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/^(?=.*[a-zA-Z])(?=.*\d)/, 'Password must contain both letters and numbers'),
+  password: passwordSchema,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",

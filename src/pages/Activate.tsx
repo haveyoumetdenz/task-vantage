@@ -10,11 +10,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
+import { passwordSchema } from '@/utils/passwordSchema'
 
 const activationSchema = z.object({
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-zA-Z])(?=.*\d)/, "Password must contain both letters and numbers"),
+  password: passwordSchema,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
