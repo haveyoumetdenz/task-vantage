@@ -45,8 +45,8 @@ jobs:
               # Check if Auth port is open
               if curl -s http://127.0.0.1:9099 > /dev/null 2>&1; then
                 # Try to verify Firestore is actually responding (not just port open)
-                # Test with a simple Firestore REST API call
-                if curl -s -X POST http://127.0.0.1:8080/v1/projects/task-vantage-test/databases/(default)/documents:beginTransaction \
+                # Test with a simple Firestore REST API call (quote URL to handle parentheses)
+                if curl -s -X POST "http://127.0.0.1:8080/v1/projects/task-vantage-test/databases/(default)/documents:beginTransaction" \
                   -H "Content-Type: application/json" \
                   -d '{}' > /dev/null 2>&1; then
                   echo "✅ Both emulators are ready and responding!"
