@@ -146,11 +146,22 @@ export default function Projects() {
     
     if (activeTab === 'my') {
       // My projects: created by user OR user is assigned to project
-      const myProjects = filteredProjectsByTeam.filter(project => 
-        project.userId === profile?.userId || 
-        (project.assigneeIds && project.assigneeIds.includes(profile?.userId || '')) ||
-        (project.assignee_ids && project.assignee_ids.includes(profile?.userId || ''))
-      )
+      // For "My Projects", we should include projects where user is assigned,
+      // even if the project's team isn't visible to them
+      const myProjects = projectsWithCounts.filter(project => {
+        const isCreator = project.userId === profile?.userId
+        const isAssigned = (project.assigneeIds && project.assigneeIds.includes(profile?.userId || '')) ||
+                          (project.assignee_ids && project.assignee_ids.includes(profile?.userId || ''))
+        
+        // If user is Senior Management or Director, show all projects they created or are assigned to
+        if (isSeniorManagement || isDirector) {
+          return isCreator || isAssigned
+        }
+        
+        // For other users, check if project is in visible teams OR user is assigned
+        const isInVisibleTeam = project.teamId && visibleTeams.includes(project.teamId)
+        return (isCreator || isAssigned) && (isInVisibleTeam || isAssigned)
+      })
       console.log('🔍 My projects (created by me OR assigned to me):', myProjects)
       return myProjects
     } else if (activeTab === 'team') {
