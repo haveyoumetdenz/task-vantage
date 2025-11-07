@@ -264,9 +264,11 @@ export default function Projects() {
           <CardContent>
             <div className="text-2xl font-bold text-warning">
               {projects.filter(p => {
-                if (!p.due_date || p.status === 'completed' || p.status === 'archived') return false
+                // Check both dueDate (camelCase) and due_date (snake_case) for compatibility
+                const dueDateValue = p.dueDate || (p as any).due_date
+                if (!dueDateValue || p.status === 'completed' || p.status === 'archived') return false
                 try {
-                  const dueDate = startOfDay(new Date(p.due_date)) // Normalize to start of day
+                  const dueDate = startOfDay(new Date(dueDateValue)) // Normalize to start of day
                   const now = new Date()
                   const weekStart = startOfDay(startOfWeek(now, { weekStartsOn: 1 })) // Monday at 00:00
                   const weekEnd = endOfDay(endOfWeek(now, { weekStartsOn: 1 })) // Sunday at 23:59:59
@@ -274,7 +276,7 @@ export default function Projects() {
                   // Debug logging
                   console.log('Due This Week check:', {
                     project: p.title,
-                    due_date: p.due_date,
+                    dueDateValue: dueDateValue,
                     dueDate: dueDate.toISOString(),
                     weekStart: weekStart.toISOString(),
                     weekEnd: weekEnd.toISOString(),
@@ -503,11 +505,11 @@ function ProjectCard({ project, onAddTask, onEditProject, onDeleteProject }: {
             {project.completedTaskCount}/{project.taskCount} tasks
           </span>
         </div>
-        {daysUntilDue !== null && (
-          <div className="text-sm text-muted-foreground">
-            {daysUntilDue > 0 ? `Due ${format(new Date(project.due_date as string), 'MMM dd')}` : 'Overdue'}
-          </div>
-        )}
+            {daysUntilDue !== null && (
+              <div className="text-sm text-muted-foreground">
+                {daysUntilDue > 0 ? `Due ${format(new Date(dueDateValue as string), 'MMM dd')}` : 'Overdue'}
+              </div>
+            )}
       </CardContent>
     </Card>
   )
