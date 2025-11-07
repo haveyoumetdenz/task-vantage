@@ -49,8 +49,11 @@ export const updateUserToSeniorManagement = async (email: string) => {
     const userRef = doc(db, 'profiles', userId)
     await updateDoc(userRef, {
       role: 'Senior Management',
-      teamId: teamId, // Set to 'senior-management' if team exists, otherwise null
+      teamId: teamId || 'senior-management', // Always set to 'senior-management' if team exists
       updatedAt: new Date().toISOString(),
+      // Add a flag to prevent accidental overwrites
+      _seniorManagementSet: true,
+      _seniorManagementSetAt: new Date().toISOString(),
     })
     
     console.log('✅ User updated to Senior Management successfully')

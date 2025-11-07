@@ -335,10 +335,15 @@ export const createUserWithPassword = onCall(async (request) => {
         }
 
         // Update profile
+        // Preserve Senior Management role if user has _seniorManagementSet flag
+        const existingData = existingProfile.data()
+        const preserveSeniorManagement = existingData?._seniorManagementSet === true && 
+                                         existingData?.role === 'Senior Management'
+        
         await existingProfile.ref.update({
           fullName: fullName,
-          role: role,
-          teamId: teamId || null,
+          role: preserveSeniorManagement ? 'Senior Management' : role,
+          teamId: preserveSeniorManagement ? 'senior-management' : (teamId || null),
           updatedAt: new Date().toISOString()
         })
 
