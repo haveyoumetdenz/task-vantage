@@ -19,7 +19,6 @@ import {
 } from 'lucide-react'
 import { CreateProjectDialog } from '@/components/forms/CreateProjectDialog'
 import { CreateTaskDialog } from '@/components/forms/CreateTaskDialog'
-import { CreateMeetingDialog } from '@/components/forms/CreateMeetingDialog'
 import { TaskCalendar } from '@/components/calendar/TaskCalendar'
 import { useFirebaseProjects } from '@/hooks/useFirebaseProjects'
 import { useFirebaseTasks } from '@/hooks/useFirebaseTasks'
@@ -29,7 +28,6 @@ import { format, isToday, isPast, isFuture } from 'date-fns'
 export default function Dashboard() {
   const [showCreateProject, setShowCreateProject] = useState(false)
   const [showCreateTask, setShowCreateTask] = useState(false)
-  const [showCreateMeeting, setShowCreateMeeting] = useState(false)
   
   const navigate = useNavigate()
   const { projects, loading: projectsLoading } = useFirebaseProjects()
@@ -308,7 +306,7 @@ export default function Dashboard() {
           <CardDescription>Common tasks to get you started</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button 
               variant="outline" 
               className="h-20 flex-col gap-2"
@@ -325,14 +323,6 @@ export default function Dashboard() {
               <FolderOpen className="h-5 w-5" />
               New Project
             </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex-col gap-2"
-              onClick={() => setShowCreateMeeting(true)}
-            >
-              <Calendar className="h-5 w-5" />
-              Schedule Meeting
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -340,7 +330,6 @@ export default function Dashboard() {
       {/* Dialogs */}
       <CreateProjectDialog open={showCreateProject} onOpenChange={setShowCreateProject} />
       <CreateTaskDialog open={showCreateTask} onOpenChange={setShowCreateTask} />
-      <CreateMeetingDialog open={showCreateMeeting} onOpenChange={setShowCreateMeeting} />
     </div>
   )
 }
