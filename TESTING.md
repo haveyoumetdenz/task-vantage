@@ -1,10 +1,10 @@
-# Testing Guide - Task Vantage
+# Testing Guide - Task Flow
 
-Comprehensive guide for running, understanding, and maintaining tests in the Task Vantage project.
+Comprehensive guide for running, understanding, and maintaining tests in the Task Flow project.
 
 ## Overview
 
-Task Vantage uses a comprehensive testing strategy with three types of tests:
+Task Flow uses a comprehensive testing strategy with three types of tests:
 
 - **Unit Tests**: Fast, isolated tests for validation logic and utility functions
 - **Integration Tests**: Emulator-backed tests for database operations and business logic
@@ -310,7 +310,7 @@ E2E tests are not yet included in CI/CD but can be added. They require:
 ### Directory Organization
 
 ```
-task-vantage-main/
+spm-taskflow/
 ├── src/test/
 │   ├── setup.ts                    # Global test setup and mocks
 │   ├── emulatorDb.ts              # Emulator connection utilities

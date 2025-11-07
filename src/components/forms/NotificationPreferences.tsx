@@ -132,7 +132,7 @@ export const NotificationPreferences = () => {
         <div>
           <h2 className="text-2xl font-bold">Notification Preferences</h2>
           <p className="text-muted-foreground">
-            Choose how you want to be notified about activities in Task Vantage
+            Choose how you want to be notified about activities in Task Flow
           </p>
         </div>
         <div className="flex items-center gap-2">

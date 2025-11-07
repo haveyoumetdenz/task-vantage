@@ -1,6 +1,6 @@
 # Unit & Integration Testing Guide
 
-This directory contains unit and integration tests for Task Vantage. For comprehensive testing documentation, see [TESTING.md](../../TESTING.md) in the root directory.
+This directory contains unit and integration tests for Task Flow. For comprehensive testing documentation, see [TESTING.md](../../TESTING.md) in the root directory.
 
 ## Quick Start
 

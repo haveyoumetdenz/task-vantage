@@ -1,6 +1,6 @@
-# Task Vantage - C4 Architecture Diagrams
+# Task Flow - C4 Architecture Diagrams
 
-This document provides detailed specifications for creating C1-C4 architecture diagrams for Task Vantage.
+This document provides detailed specifications for creating C1-C4 architecture diagrams for Task Flow.
 
 ---
 
@@ -38,7 +38,7 @@ Shows the system and its relationships with external actors.
    - Description: Human Resources personnel managing user accounts
 
 #### System (Rounded Rectangle)
-- **Task Vantage System**
+- **Task Flow System**
   - Position: Center
   - Color: Light Blue (#3B82F6)
   - Description: "Manages tasks, projects, teams, and organizational workflows"
@@ -46,23 +46,23 @@ Shows the system and its relationships with external actors.
 
 ### Connections (Arrows with Labels)
 
-1. **Staff → Task Vantage System**
+1. **Staff → Task Flow System**
    - Label: "HTTPS"
    - Description: "View tasks & projects, Create/update tasks, Apply for arrangements"
 
-2. **Managers → Task Vantage System**
+2. **Managers → Task Flow System**
    - Label: "HTTPS"
    - Description: "View team schedule, Approve/reject requests, View department schedule"
 
-3. **Directors → Task Vantage System**
+3. **Directors → Task Flow System**
    - Label: "HTTPS"
    - Description: "View team hierarchy, Manage multiple teams, View department reports"
 
-4. **Senior Management → Task Vantage System**
+4. **Senior Management → Task Flow System**
    - Label: "HTTPS"
    - Description: "View all organization data, Access all reports"
 
-5. **HR → Task Vantage System**
+5. **HR → Task Flow System**
    - Label: "HTTPS"
    - Description: "Manage user accounts, View user reports"
 
@@ -90,7 +90,7 @@ Shows the high-level shape of the software architecture and the responsibilities
 
 #### System Boundary (Dashed Rectangle)
 - Encloses all containers
-- Label: "Task Vantage System"
+- Label: "Task Flow System"
 
 #### Containers (Inside Boundary)
 

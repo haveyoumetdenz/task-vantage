@@ -1,4 +1,4 @@
-# Task Vantage
+# Task Flow
 
 A modern, full-stack task management application with team collaboration, project tracking, and analytics capabilities. Built with React, TypeScript, Firebase, and a comprehensive testing suite.
 
@@ -27,7 +27,7 @@ Before you begin, ensure you have the following installed:
 1. **Clone the repository**
    ```bash
    git clone <YOUR_GIT_URL>
-   cd task-vantage-main
+   cd spm-taskflow
    ```
 
 2. **Install dependencies**
@@ -116,7 +116,7 @@ Access the Firebase Emulator UI at `http://localhost:4000` (if configured)
 ## Project Structure
 
 ```
-task-vantage-main/
+spm-taskflow/
 ├── src/
 │   ├── components/      # Reusable UI components
 │   │   ├── auth/       # Authentication components

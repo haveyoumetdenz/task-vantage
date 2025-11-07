@@ -1,4 +1,4 @@
-# 🚀 Task Vantage - Tech Stack Overview
+# 🚀 Task Flow - Tech Stack Overview
 
 ## 📋 **Project Summary**
 A modern, full-stack task management application with team collaboration, project tracking, and analytics capabilities.
