@@ -85,32 +85,28 @@ export const AccountManagementDialog = ({
     },
   })
 
-  // Reset form when account status changes
+  // Load account status when dialog opens
+  React.useEffect(() => {
+    if (open && targetUserId) {
+      loadAccountStatus()
+    }
+  }, [open, targetUserId])
+
+  // Reset form when account status is loaded (only once)
   React.useEffect(() => {
     if (accountStatus && open) {
       const isActive = accountStatus.isActive !== false && !accountStatus.deactivatedAt
       const defaultAction = isActive ? 'deactivate' : 'reactivate'
-      const action = availableActions.includes(defaultAction) ? defaultAction : availableActions[0]
+      // Compute available actions based on current account status
+      const currentAvailableActions = isActive ? ['deactivate', 'delete'] : ['reactivate', 'delete']
+      const action = currentAvailableActions.includes(defaultAction) ? defaultAction : currentAvailableActions[0]
       form.reset({
         action,
         reason: '',
         confirmAction: false,
       })
     }
-  }, [accountStatus, open, availableActions, form])
-
-  // Load account status when dialog opens
-  React.useEffect(() => {
-    if (open && targetUserId) {
-      loadAccountStatus()
-      // Reset form when dialog opens
-      form.reset({
-        action: availableActions[0],
-        reason: '',
-        confirmAction: false,
-      })
-    }
-  }, [open, targetUserId])
+  }, [accountStatus, open, form]) // Include form in deps but it's stable from useForm
 
   const loadAccountStatus = async () => {
     try {
@@ -291,7 +287,11 @@ export const AccountManagementDialog = ({
                     <Textarea
                       placeholder="Enter reason for this action..."
                       className="min-h-[80px]"
-                      {...field}
+                      disabled={isSubmitting}
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
                     />
                   </FormControl>
                   <FormMessage />
