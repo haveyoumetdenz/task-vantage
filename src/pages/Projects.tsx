@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { format, startOfWeek, endOfWeek } from "date-fns"
+import { format, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns"
 import { useNavigate } from "react-router-dom"
 
 export default function Projects() {
@@ -265,10 +265,10 @@ export default function Projects() {
             <div className="text-2xl font-bold text-warning">
               {projects.filter(p => {
                 if (!p.due_date || p.status === 'completed' || p.status === 'archived') return false
-                const dueDate = new Date(p.due_date)
+                const dueDate = startOfDay(new Date(p.due_date)) // Normalize to start of day
                 const now = new Date()
-                const weekStart = startOfWeek(now, { weekStartsOn: 1 }) // Monday
-                const weekEnd = endOfWeek(now, { weekStartsOn: 1 }) // Sunday
+                const weekStart = startOfDay(startOfWeek(now, { weekStartsOn: 1 })) // Monday at 00:00
+                const weekEnd = endOfDay(endOfWeek(now, { weekStartsOn: 1 })) // Sunday at 23:59:59
                 return dueDate >= weekStart && dueDate <= weekEnd
               }).length}
             </div>
