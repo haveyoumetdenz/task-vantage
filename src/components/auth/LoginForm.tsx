@@ -12,11 +12,10 @@ import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/contexts/FirebaseAuthContext'
 import { toast } from 'sonner'
 import { MFALoginDialog } from './MFALoginDialog'
-import { passwordSchema } from '@/utils/passwordSchema'
 
 const authSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  password: passwordSchema,
+  password: z.string().min(1, 'Password is required'),
 })
 
 type AuthFormData = z.infer<typeof authSchema>
