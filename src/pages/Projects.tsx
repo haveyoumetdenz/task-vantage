@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Clock, TrendingUp, CheckSquare, Folder, ListPlus, Edit } from "lucide-react"
+import { Plus, Search, Clock, TrendingUp, CheckSquare, Folder, ListPlus, Edit, Trash2 } from "lucide-react"
 import { useFirebaseProjects } from "@/hooks/useFirebaseProjects"
 import { useFirebaseTasks } from "@/hooks/useFirebaseTasks"
 import { useFirebaseRBAC } from "@/hooks/useFirebaseRBAC"
@@ -12,6 +12,16 @@ import { CreateProjectDialog } from "@/components/forms/CreateProjectDialog"
 import { CreateTaskDialog } from "@/components/forms/CreateTaskDialog"
 import { EditProjectDialog } from "@/components/forms/EditProjectDialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import { useNavigate } from "react-router-dom"
 
@@ -24,7 +34,9 @@ export default function Projects() {
   const [selectedProject, setSelectedProject] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState('my')
   const [includeMyProjects, setIncludeMyProjects] = useState(false)
-  const { projects, loading } = useFirebaseProjects()
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<any | null>(null)
+  const { projects, loading, deleteProject } = useFirebaseProjects()
   const { tasks: allTasks } = useFirebaseTasks() // Get all tasks
   const { canViewTeamWork, profile, isManager, isDirector, isSeniorManagement, getVisibleTeams } = useFirebaseRBAC()
   const navigate = useNavigate()
@@ -105,6 +117,21 @@ export default function Projects() {
   const handleEditProject = (project: any) => {
     setSelectedProject(project)
     setOpenEdit(true)
+  }
+
+  const handleDeleteProject = (project: any) => {
+    setProjectToDelete(project)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDeleteProject = async () => {
+    if (!projectToDelete) return
+    
+    const result = await deleteProject(projectToDelete.id)
+    if (result) {
+      setShowDeleteDialog(false)
+      setProjectToDelete(null)
+    }
   }
 
 
@@ -248,10 +275,10 @@ export default function Projects() {
           </TabsList>
           <TabsContent value="my" className="space-y-8">
             <Section title="My Active Projects">
-              <Grid projects={filtered.filter(p => p.status === "active")} onAddTask={handleAddTask} onEditProject={handleEditProject} />
+              <Grid projects={filtered.filter(p => p.status === "active")} onAddTask={handleAddTask} onEditProject={handleEditProject} onDeleteProject={handleDeleteProject} />
             </Section>
             <Section title="My Completed Projects">
-              <Grid projects={filtered.filter(p => p.status === "completed")} onAddTask={handleAddTask} onEditProject={handleEditProject} />
+              <Grid projects={filtered.filter(p => p.status === "completed")} onAddTask={handleAddTask} onEditProject={handleEditProject} onDeleteProject={handleDeleteProject} />
             </Section>
             {filtered.length === 0 && (
               <Card>
@@ -272,10 +299,10 @@ export default function Projects() {
               </label>
             </div>
             <Section title="Team Active Projects">
-              <Grid projects={filtered.filter(p => p.status === "active")} onAddTask={handleAddTask} onEditProject={handleEditProject} />
+              <Grid projects={filtered.filter(p => p.status === "active")} onAddTask={handleAddTask} onEditProject={handleEditProject} onDeleteProject={handleDeleteProject} />
             </Section>
             <Section title="Team Completed Projects">
-              <Grid projects={filtered.filter(p => p.status === "completed")} onAddTask={handleAddTask} onEditProject={handleEditProject} />
+              <Grid projects={filtered.filter(p => p.status === "completed")} onAddTask={handleAddTask} onEditProject={handleEditProject} onDeleteProject={handleDeleteProject} />
             </Section>
             {filtered.length === 0 && (
               <Card>
@@ -291,10 +318,10 @@ export default function Projects() {
             <p className="text-sm text-muted-foreground">Projects you created or are a member of</p>
           </div>
           <Section title="Active Projects">
-            <Grid projects={filtered.filter(p => p.status === "active")} onAddTask={handleAddTask} onEditProject={handleEditProject} />
+            <Grid projects={filtered.filter(p => p.status === "active")} onAddTask={handleAddTask} onEditProject={handleEditProject} onDeleteProject={handleDeleteProject} />
           </Section>
           <Section title="Completed Projects">
-            <Grid projects={filtered.filter(p => p.status === "completed")} onAddTask={handleAddTask} onEditProject={handleEditProject} />
+            <Grid projects={filtered.filter(p => p.status === "completed")} onAddTask={handleAddTask} onEditProject={handleEditProject} onDeleteProject={handleDeleteProject} />
           </Section>
           {filtered.length === 0 && (
             <Card>
@@ -312,6 +339,27 @@ export default function Projects() {
         onOpenChange={setOpenCreateTask}
         defaultProjectId={selectedProjectId || undefined}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the project "{projectToDelete?.title}" and all associated tasks.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteProject} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -325,25 +373,33 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Grid({ projects, onAddTask, onEditProject }: { 
+function Grid({ projects, onAddTask, onEditProject, onDeleteProject }: { 
   projects: any[]; 
   onAddTask: (projectId: string) => void;
   onEditProject: (project: any) => void;
+  onDeleteProject: (project: any) => void;
 }) {
   if (projects.length === 0) return <div className="text-sm text-muted-foreground">No items</div>
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {projects.map((project) => (
-        <ProjectCard key={project.id} project={project} onAddTask={onAddTask} onEditProject={onEditProject} />
+        <ProjectCard 
+          key={project.id} 
+          project={project} 
+          onAddTask={onAddTask} 
+          onEditProject={onEditProject}
+          onDeleteProject={onDeleteProject}
+        />
       ))}
     </div>
   )
 }
 
-function ProjectCard({ project, onAddTask, onEditProject }: { 
+function ProjectCard({ project, onAddTask, onEditProject, onDeleteProject }: { 
   project: any; 
   onAddTask: (projectId: string) => void;
   onEditProject: (project: any) => void;
+  onDeleteProject: (project: any) => void;
 }) {
   const navigate = useNavigate()
   const statusBadge: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -381,6 +437,17 @@ function ProjectCard({ project, onAddTask, onEditProject }: {
               className="opacity-70 hover:opacity-100"
             >
               <ListPlus className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteProject(project)
+              }}
+              className="opacity-70 hover:opacity-100 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
